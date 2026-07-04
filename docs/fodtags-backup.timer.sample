@@ -1,0 +1,16 @@
+# Sample systemd timer triggering fodtags-backup.service on a daily
+# schedule. REFERENCE ONLY (ops/deploy step) — see
+# docs/fodtags-backup.service.sample for the paired service unit, and
+# scripts/backup.sh for the backup logic itself. A plain cron entry works
+# equally well if the deploy environment prefers cron over systemd timers.
+
+[Unit]
+Description=Daily FOD Tags Aggregator database backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

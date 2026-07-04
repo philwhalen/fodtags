@@ -1,0 +1,64 @@
+# Sample systemd unit for FOD Tags Aggregator.
+#
+# REFERENCE ONLY. This is the default supervisor assumed by
+# specs/12-Architecture.md §12.12; an external deploy repo may substitute
+# its own supervisor (a different systemd unit, a container orchestrator,
+# etc.) as long as it honors the same contract: one Node process, one
+# writable DATA_DIR, the env vars below, and the existing VM nginx
+# proxying to PORT (see docs/nginx.sample.conf).
+#
+# Install (adjust paths for the real deploy location):
+#   sudo cp docs/fodtags.service.sample /etc/systemd/system/fodtags.service
+#   sudo cp <path-to-env-file>          /etc/fodtags/fodtags.env
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now fodtags
+
+[Unit]
+Description=FOD Tags Aggregator (Next.js standalone server)
+After=network.target
+
+[Service]
+Type=simple
+
+# Directory containing the built `.next/standalone/` output (i.e. the repo
+# checkout / release directory on the VM).
+WorkingDirectory=/opt/fodtags/current
+
+# All specs/12-Architecture.md §12.9 vars live here. IMPORTANT: DATA_DIR in
+# this file MUST be an ABSOLUTE path (e.g. /opt/fodtags/data) — the Next.js
+# standalone server (`.next/standalone/server.js`) calls
+# `process.chdir(__dirname)` on startup, so a relative DATA_DIR (like the
+# `./data` used for local dev) would resolve under
+# `.next/standalone/` instead of the intended persistent location.
+EnvironmentFile=/etc/fodtags/fodtags.env
+
+# next.config.ts builds with `output: 'standalone'`; the standalone bundle
+# is self-contained (its own node_modules subset) and run directly with node.
+ExecStart=/usr/bin/node .next/standalone/server.js
+
+Restart=on-failure
+RestartSec=5
+
+# Structured logs (pino) go to stdout/stderr by design (§12.12) — systemd
+# captures them into journald; view with `journalctl -u fodtags -f`.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fodtags
+
+# Basic hardening; loosen if the deploy environment needs otherwise.
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+
+# --- /etc/fodtags/fodtags.env would look like: -----------------------------
+# DATA_DIR=/opt/fodtags/data
+# PORT=3000
+# AUTH_SECRET=<real-32-plus-char-secret>
+# GOOGLE_CLIENT_ID=<real-google-oauth-client-id>
+# GOOGLE_CLIENT_SECRET=<real-google-oauth-client-secret>
+# BOOTSTRAP_DIRECTOR_EMAIL=<a-real-director-email>
+# APP_TIMEZONE=America/New_York
+# NODE_ENV=production
+# ----------------------------------------------------------------------------

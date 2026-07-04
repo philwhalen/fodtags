@@ -1,0 +1,29 @@
+# Sample systemd service invoking scripts/backup.sh — paired with
+# docs/fodtags-backup.timer.sample. REFERENCE ONLY (ops/deploy step).
+#
+# Install (adjust WorkingDirectory/EnvironmentFile for the real deploy path):
+#   sudo cp docs/fodtags-backup.service.sample /etc/systemd/system/fodtags-backup.service
+#   sudo cp docs/fodtags-backup.timer.sample   /etc/systemd/system/fodtags-backup.timer
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now fodtags-backup.timer
+
+[Unit]
+Description=FOD Tags Aggregator — database backup (VACUUM INTO snapshot)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/fodtags/current
+
+# Reuses the same env file as the app unit — backup.sh only needs DATA_DIR,
+# but sourcing the whole file is harmless and keeps one source of truth.
+EnvironmentFile=/etc/fodtags/fodtags.env
+
+# Optional: override retention count / destination independently of the app env.
+# Environment=BACKUP_RETENTION=14
+# Environment=BACKUP_DEST=/opt/fodtags/backups
+
+ExecStart=/opt/fodtags/current/scripts/backup.sh
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fodtags-backup
