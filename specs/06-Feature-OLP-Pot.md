@@ -36,7 +36,7 @@ Per glossary, "each season" = **each sub-league** (Early / Mid / Late). The OLP 
 
 ## 6.4 Freshness & correctness
 
-- Rating component uses the rating **on the sub-league's last day**; while in progress, use latest and label as projected.
+- Rating component uses the official rating **in effect on the sub-league's admin-configured end date** ([Spec 03 §3.4](./03-Data-Ingestion-and-PDGA.md#34-event-registration-model)); while the sub-league is in progress, use the latest official rating and label as projected. Payouts flip from **projected** to **final** when a director **marks the sub-league complete** ([Spec 10 §10.3](./10-Admin-Console.md#103-pdga-event-configuration)).
 - Excludes canceled rounds from the round count and average ([Spec 02 §2.7](./02-Domain-Model-and-Scoring.md#27-cancellations--partial-events)).
 - Standard freshness/stale/data-quality banners.
 

@@ -22,6 +22,7 @@ The private, authenticated area where league directors supply the data PDGA can'
 ## 10.3 PDGA event configuration
 
 - Register the Season's **event sources** ([Spec 03 §3.4](./03-Data-Ingestion-and-PDGA.md#34-event-registration-model)): `pdgaEventId`, `type` (Early/Mid/Late/Tournament/FOD Open), divisions, active flag, label.
+- For **sub-leagues** (Early/Mid/Late): set the **start and end dates** that bound the sub-league window (they drive current-sub-league selection and the OLP "last day" rating), plus a **"Mark complete"** action that **finalizes** the sub-league — folding in the computed Podium bonus ([Spec 02 §2.4.1](./02-Domain-Model-and-Scoring.md#241-league-podium--computed-bonus)) and flipping OLP payouts from projected to final ([Spec 06 §6.4](./06-Feature-OLP-Pot.md#64-freshness--correctness)).
 - Add tournaments / the FOD Open as they're scheduled.
 - Set the **tournament count** context that drives the best-2 vs best-3 cap (or derive from registered tournament events).
 

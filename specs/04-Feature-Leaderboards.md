@@ -34,7 +34,9 @@ Per [Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)
 
 ## 4.3 Sub-league leaderboard content
 
-The sub-league view shows standings **within that sub-league**: **League-Night points accrued in that sub-league while it is in progress, with that sub-league's Podium bonus folded in once it is finalized.** Ranking is per-pool, like everywhere else.
+The sub-league view shows standings **within that sub-league**: **League-Night points accrued in that sub-league while it is in progress, with that sub-league's Podium bonus folded in once it is finalized.** All of the sub-league's League Nights count (the best-15 cap is season-wide — [Spec 02 §2.5](./02-Domain-Model-and-Scoring.md#25-top-n-counts-aggregation)). Ranking is per-pool, like everywhere else.
+
+The **current** sub-league (the season toggle's default) is the one whose **admin-configured `[startDate, endDate]` window contains today** (America/New_York); if none contains today, the most recently ended sub-league. A sub-league is **finalized** — folding in the computed Podium bonus ([Spec 02 §2.4.1](./02-Domain-Model-and-Scoring.md#241-league-podium--computed-bonus)) — when a director **marks it complete** ([Spec 10 §10.3](./10-Admin-Console.md#103-pdga-event-configuration)).
 
 ## 4.4 States
 

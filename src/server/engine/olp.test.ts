@@ -5,7 +5,7 @@
 // unit test.
 import { describe, expect, it } from "vitest";
 
-import { olpScore } from "@server/engine/olp";
+import { entriesToOlpPot, largestRemainderPayout, olpScore } from "@server/engine/olp";
 import { roundToOneDecimal } from "@/lib";
 
 describe("olpScore", () => {
@@ -34,5 +34,43 @@ describe("olpScore", () => {
 
     expect(roundToOneDecimal(raw)).toBe(81.4);
     expect(raw).toBeCloseTo(81.4, 10);
+  });
+});
+
+describe("entriesToOlpPot", () => {
+  it("is $1 per paid League-Night entry", () => {
+    expect(entriesToOlpPot(0)).toBe(0);
+    expect(entriesToOlpPot(37)).toBe(37);
+  });
+});
+
+describe("largestRemainderPayout", () => {
+  it("sums exactly to the pot for evenly-divisible pots", () => {
+    const [first, second, third] = largestRemainderPayout(100);
+    expect([first, second, third]).toEqual([50, 30, 20]);
+    expect(first + second + third).toBe(100);
+  });
+
+  it("sums exactly to the pot for a pot not divisible by 10 (101)", () => {
+    const shares = largestRemainderPayout(101);
+    // 50.5 / 30.3 / 20.2 -> floors 50/30/20 (=100), 1 leftover dollar goes
+    // to the largest fractional remainder (1st place's .5).
+    expect(shares).toEqual([51, 30, 20]);
+    expect(shares[0] + shares[1] + shares[2]).toBe(101);
+  });
+
+  it("sums exactly to the pot for a pot not divisible by 10 (103)", () => {
+    const shares = largestRemainderPayout(103);
+    // 51.5 / 30.9 / 20.6 -> floors 51/30/20 (=101), 2 leftover dollars go
+    // to the two largest fractional remainders (2nd's .9, then 3rd's .6).
+    expect(shares).toEqual([51, 31, 21]);
+    expect(shares[0] + shares[1] + shares[2]).toBe(103);
+  });
+
+  it("sums exactly to the pot across a wide range of values", () => {
+    for (let pot = 0; pot <= 250; pot++) {
+      const [first, second, third] = largestRemainderPayout(pot);
+      expect(first + second + third).toBe(pot);
+    }
   });
 });

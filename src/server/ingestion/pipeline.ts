@@ -10,7 +10,7 @@ import { child } from "@server/logging";
 import { listActiveSources } from "@server/db/repositories/eventSources";
 import { listHolders } from "@server/db/repositories/tagHolders";
 import { startRun, finishRun } from "@server/db/repositories/refreshRuns";
-import { buildAndPublish } from "@server/readmodel";
+import { recompute } from "@server/readmodel";
 import { getPdgaSource } from "@server/ingestion/pdga";
 import { normalize } from "@server/ingestion/normalize";
 import { match, type MatchableHolder } from "@server/ingestion/match";
@@ -73,14 +73,14 @@ export function __resetSingleFlightForTests(): void {
  *
  * Steps (Spec 03 §3.7 / specs/12-Architecture.md §12.3):
  *   fetch (per active source) -> normalize -> cache raw -> match
- *     -> recompute (pure engine, via buildAndPublish) -> atomic publish
+ *     -> recompute (pure engine, via shared `recompute()`) -> atomic publish
  *
  * A single source throwing is caught, recorded as failed for THAT source
  * only, and does not stop the others (Spec 03 §3.8) — see the try/catch
  * inside the per-source loop below. The run itself is ALWAYS recorded in
  * `refresh_runs`: `startRun` happens before any source is touched, and
  * `finishRun` runs in a `finally` block so a thrown error (even one that
- * escapes the per-source isolation, e.g. `buildAndPublish` itself failing)
+ * escapes the per-source isolation, e.g. `recompute` itself failing)
  * still lands a terminal row instead of leaving it stuck at `running`.
  */
 export function runRefresh(input: RunRefreshInput): Promise<RunRefreshSummary> {
@@ -174,7 +174,7 @@ async function executeRefresh(input: RunRefreshInput): Promise<RunRefreshSummary
     // failures above — the engine works off whatever is currently persisted
     // (unaffected by a source that failed to fetch this round), and
     // `publish` either commits a whole new version or rolls back entirely.
-    const publishedVersion = buildAndPublish(seasonYear);
+    const publishedVersion = await recompute(seasonYear);
 
     // No "partial" status exists in the `refresh_runs` schema (running |
     // succeeded | failed) — a run that published successfully is recorded

@@ -9,12 +9,16 @@ export type { StandingsViewPayload, ViewRow } from "@server/readmodel/build";
 export { publish } from "@server/readmodel/publish";
 
 /**
- * Convenience composing build → publish. This is what the ingestion
- * pipeline (sub-plan 06) calls at the end of a refresh, and what the boot
- * "ensure published" step (src/instrumentation.ts) calls if the pointer is
- * unset for the season.
+ * Synchronous build → publish. Boot and unit tests that don't need the
+ * shared single-flight guard call this directly; admin writes and the
+ * ingestion pipeline call `recompute` instead.
  */
 export function buildAndPublish(seasonYear: number): number {
   const views = buildViews(seasonYear);
   return publish(seasonYear, views);
 }
+
+export {
+  recompute,
+  __resetRecomputeSingleFlightForTests,
+} from "@server/readmodel/recompute";

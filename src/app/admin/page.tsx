@@ -2,9 +2,12 @@ import { auth, signOut } from "@server/auth";
 import { getCurrentVersion } from "@server/db/repositories/readModel";
 import { listRuns } from "@server/db/repositories/refreshRuns";
 
+import { AdminNav } from "./admin-nav";
 import { RefreshButton } from "./refresh-button";
 
 const SEASON_YEAR = 2026;
+
+export const dynamic = "force-dynamic";
 
 /**
  * Stub admin dashboard (plans/scaffold/08-auth-admin.md; specs/10-Admin-Console.md §10.1/§10.7).
@@ -23,6 +26,7 @@ export default async function AdminPage() {
   return (
     <main>
       <h1>FOD Tags Admin</h1>
+      <AdminNav />
       <p>
         Signed in as <strong>{session?.user?.email ?? "unknown"}</strong>
       </p>

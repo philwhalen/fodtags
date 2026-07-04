@@ -3,14 +3,38 @@
 // from client components too, so nothing server-only (secrets, DB, PDGA
 // access) belongs here.
 
-/**
- * Pool assignment: Pool B is for players <900 rated at first entry; they
- * earn Pool B points only while <920 (specs/00-Master-Spec.md glossary).
- * Deliberately redeclared here (rather than imported from
- * `src/server/db/schema.ts`) so the pure engine and client UI can share it
- * without depending on server-only code.
- */
-export type Pool = "A" | "B";
+import type { Pool } from "./pool";
+
+export type { Pool } from "./pool";
+
+// The `computeSeason` engine's input/output contract (Spec 02;
+// plans/common-a/02-engine-scoring.md) — kept here rather than imported
+// from `src/server/db/repositories/seasonSnapshot.ts` so the pure engine
+// never has to reach into `src/server/`.
+export type {
+  EventSourceCategory,
+  EventType,
+  SeasonSnapshot,
+  SeasonSnapshotEntryCount,
+  SeasonSnapshotEvent,
+  SeasonSnapshotEventResult,
+  SeasonSnapshotHolder,
+  SeasonSnapshotPoolSwitch,
+  SeasonSnapshotRating,
+  SeasonSnapshotSubLeague,
+  SubLeagueType,
+} from "./season-snapshot";
+export type {
+  OlpRow,
+  PodiumStanding,
+  PoolSkins,
+  PoolStandings,
+  ScoreSheetEntry,
+  ScoreSheetLineItem,
+  SeasonResults,
+  SeasonStandingRow,
+  SkinsRow,
+} from "./season-results";
 
 /** A single ranked row in a pool's leaderboard (Spec 04 §4.2 columns). */
 export interface StandingRow {
@@ -61,3 +85,16 @@ export function formatEt(iso: string): string {
   }).format(new Date(iso));
   return `${formatted} ET`;
 }
+
+export type { PublicStandingsRow, PublicStandingsViewPayload } from "./standings-view";
+export {
+  isValidPool,
+  isValidSubLeague,
+  placeholderRouteHrefs,
+  poolLabel,
+  publicNavItems,
+  subLeagueLabel,
+  VALID_POOLS,
+  VALID_SUB_LEAGUES,
+} from "./public-routes";
+export type { PoolSlug, PublicNavItem, SubLeagueSlug } from "./public-routes";

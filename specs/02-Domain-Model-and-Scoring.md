@@ -11,8 +11,8 @@ This is the **computation contract**. Because the app computes everything ([Mast
 - **Player** — a person; may have a PDGA number and rating. Not all PDGA entrants are players in our sense.
 - **TagHolder** — a Player who bought a tag: `{ player, tagNumber, pool, entryDate, pdgaNumber, ratingAtEntry, active }`.
 - **Season** — `{ year, subLeagues[], tournaments[], fodOpen }`. Launch: 2026.
-- **SubLeague** — `{ name: Early|Mid|Late, pdgaEventId, leagueNights[], podium }`.
-- **Event** — a scored competition instance with a `type ∈ {LeagueNight, Podium, Tournament, FODOpen}` and results.
+- **SubLeague** — `{ name: Early|Mid|Late, pdgaEventId, startDate, endDate, complete, leagueNights[], podium }`. `startDate`/`endDate` are **admin-configured** — they bound the sub-league window and fix the OLP "last day"; `complete` is an **admin flag** a director sets to finalize the sub-league (folds in the Podium bonus, flips OLP payouts to final). See [Spec 10 §10.3](./10-Admin-Console.md#103-pdga-event-configuration).
+- **Event** — a scored competition instance with a `type ∈ {LeagueNight, Podium, Tournament, FODOpen}` and results. **One PDGA round within a sub-league's event = one League Night.** The **Podium is computed** from the sub-league's standings (§2.4.1), not ingested as its own PDGA event.
 - **Result** — `{ event, tagHolder, rawScoreToPar, roundRating, finishPosition, pointsAwarded }`.
 
 ## 2.2 Pools & eligibility
@@ -56,13 +56,22 @@ Rules for awarding:
 - Points are awarded **regardless of attendance count**, as long as the event isn't canceled (3 attendees → top-3 points).
 - **All finishes are ranked per-pool.** This applies to **every** event type — League Nights, League Podiums, Tournaments, and the FOD Open: Pool A and Pool B each have their own 1st place and each earn the full points for that place. A player's finish is computed only against the other tag holders **in their own pool** at that event.
 
+## 2.4.1 League Podium — computed bonus
+
+The **Podium is not a PDGA source**; it is **computed** when a director marks the sub-league **complete** ([Spec 10 §10.3](./10-Admin-Console.md#103-pdga-event-configuration)):
+
+- Rank tag holders **per pool** by their **accumulated League-Night points within that sub-league**. **All** of the sub-league's League Nights count toward this ranking — the season-wide best-15 cap (§2.5) is a **Championship** aggregation and does **not** apply within a single sub-league.
+- Award **League Podium** points (Table 2.1: 1st 150 / 2nd 100 / 3rd 50) to the **top 3 in each pool**.
+- Ties are broken by **tag number upon sub-league completion** (§2.6).
+- While the sub-league is in progress the Podium is **projected**; it becomes **final** (and its points enter the Championship total) once the sub-league is marked complete ([Spec 04 §4.3](./04-Feature-Leaderboards.md#43-sub-league-leaderboard-content)).
+
 ## 2.5 "Top-N counts" aggregation
 
 A player's Championship total is **not** the raw sum of all results. Each event type contributes only a player's best N:
 
 - **League Nights:** best **15** finishes count toward the Championship total.
 - **Tournaments (excluding FOD Open):** best **2** finishes if there are **≤3** sanctioned FOD tournaments in the Season; best **3** if there are **≥4**. The cap is derived from the count of tournament event sources registered for the Season ([Spec 03 §3.4](./03-Data-Ingestion-and-PDGA.md#34-event-registration-model)); it **recomputes if that count crosses the 3→4 boundary** mid-season and is final at Season end.
-- **League Podium:** all podium finishes count (up to 3 sub-leagues).
+- **League Podium:** all podium finishes count (up to 3 sub-leagues). Each sub-league yields **one computed Podium result per pool per holder** (§2.4.1).
 - **FOD Open:** the single result counts.
 
 > The score sheet ([Spec 07](./07-Feature-Pool-Score-Sheets.md)) must show which results **counted** vs were **dropped** by these caps.

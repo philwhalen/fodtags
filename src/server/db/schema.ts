@@ -52,6 +52,9 @@ export const tagHolders = sqliteTable(
     /** Official PDGA rating at first entry — drives Pool A/B eligibility. */
     ratingAtEntry: integer("rating_at_entry"),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
+    /** PDGA membership on file — required for OLP eligibility (Spec 06
+     * §6.2); independent of having a `pdgaNumber` recorded. */
+    pdgaMembership: integer("pdga_membership", { mode: "boolean" }).notNull().default(false),
   },
   (table) => [
     uniqueIndex("tag_holders_season_tag_number_idx").on(table.seasonYear, table.tagNumber),
@@ -75,6 +78,21 @@ export const eventSources = sqliteTable(
     type: text("type", { enum: eventSourceTypeEnum }).notNull(),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     label: text("label").notNull(),
+    /** Sub-league only (Early/Mid/Late): admin-configured window start (ET,
+     * `YYYY-MM-DD`) — drives current-sub-league selection (Spec 03 §3.4).
+     * Null for Tournament/FOD_OPEN sources. */
+    startDate: text("start_date"),
+    /** Sub-league only: window end (ET, `YYYY-MM-DD`) — also fixes the OLP
+     * "last day" rating (Spec 02 §2.8). Null for Tournament/FOD_OPEN. */
+    endDate: text("end_date"),
+    /** Sub-league only: admin flag that finalizes the sub-league — folds in
+     * the computed Podium bonus and flips OLP payouts to final (Spec 02
+     * §2.4.1, Spec 10 §10.3). */
+    complete: integer("complete", { mode: "boolean" }).notNull().default(false),
+    /** JSON array of PDGA division codes to ingest for this source (e.g.
+     * `["MPO", "MA1"]`). Kept as a JSON text column, matching the skeleton's
+     * convention for JSON columns (see `refreshRuns`/`readModel` below). */
+    divisions: text("divisions", { mode: "json" }).notNull().default(sql`'[]'`),
   },
   (table) => [
     // One row per sub-league/type per season (Spec 03 §3.4: each sub-league
@@ -82,6 +100,195 @@ export const eventSources = sqliteTable(
     // upsert target.
     uniqueIndex("event_sources_season_type_idx").on(table.seasonYear, table.type),
     index("event_sources_season_year_idx").on(table.seasonYear),
+  ],
+);
+
+/** Scored-event type. Excludes "Podium" — the League Podium bonus is
+ * synthesized by the engine from sub-league standings, never ingested or
+ * stored as its own event row (Spec 02 §2.4.1). */
+export const eventTypeEnum = ["LeagueNight", "Tournament", "FODOpen"] as const;
+export type EventType = (typeof eventTypeEnum)[number];
+
+/**
+ * Scored instances (Spec 02 §2.1): one PDGA round within a sub-league's
+ * event = one League Night (`roundOrdinal` carries the PDGA round number).
+ * Tournaments/FOD Open have a single event row each (`roundOrdinal` null).
+ */
+export const events = sqliteTable(
+  "events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    eventSourceId: integer("event_source_id")
+      .notNull()
+      .references(() => eventSources.id),
+    type: text("type", { enum: eventTypeEnum }).notNull(),
+    label: text("label").notNull(),
+    /** ET calendar date, `YYYY-MM-DD`. */
+    eventDate: text("event_date").notNull(),
+    /** The PDGA round number for a League Night; null for Tournament/FOD
+     * Open (single-event sources). */
+    roundOrdinal: integer("round_ordinal"),
+    /** Admin-set cancellation flag (Spec 02 §2.7, Spec 10 §10.5) — zero
+     * points everywhere, including OLP round counts, when true. */
+    canceled: integer("canceled", { mode: "boolean" }).notNull().default(false),
+  },
+  (table) => [
+    // Natural key for the idempotent seed and for admin upserts: one
+    // League Night per (source, round). Tournament/FOD_OPEN rows have a
+    // null `roundOrdinal`; SQLite treats NULLs as distinct in a unique
+    // index, so this only actually constrains League Nights.
+    uniqueIndex("events_source_round_idx").on(table.eventSourceId, table.roundOrdinal),
+    index("events_season_year_idx").on(table.seasonYear),
+  ],
+);
+
+/**
+ * One row per PDGA entrant per event (Spec 03 §3.5/§3.7). Non-holders
+ * (`holderId` null) stay in the data so finish order/round context can
+ * still be computed, but are excluded from points.
+ */
+export const eventResults = sqliteTable(
+  "event_results",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id),
+    pdgaNumber: integer("pdga_number"),
+    displayName: text("display_name").notNull(),
+    /** Set by player matching (Spec 03 §3.5); null = non-holder or
+     * not-yet-matched (excluded from points either way). */
+    holderId: integer("holder_id").references(() => tagHolders.id),
+    rawScoreToPar: integer("raw_score_to_par").notNull(),
+    roundRating: integer("round_rating"),
+    playerRatingReported: integer("player_rating_reported"),
+    /** Whether the holder's tag was physically present (able to be
+     * won/lost) — defaults true; admin-confirmable override (Spec 02 §2.3,
+     * Spec 10 §10.5) when it deviates. */
+    tagPresent: integer("tag_present", { mode: "boolean" }).notNull().default(true),
+    /** Whether this round's score is PDGA-final (vs. still in progress). */
+    roundFinal: integer("round_final", { mode: "boolean" }).notNull().default(true),
+  },
+  (table) => [
+    // Natural key: one row per PDGA entrant per event. SQLite unique
+    // indexes treat NULLs as distinct, so multiple no-pdga-number entrants
+    // (guests without a PDGA number on file) coexist fine.
+    uniqueIndex("event_results_event_pdga_number_idx").on(table.eventId, table.pdgaNumber),
+    index("event_results_season_year_idx").on(table.seasonYear),
+    index("event_results_holder_id_idx").on(table.holderId),
+  ],
+);
+
+/**
+ * Sticky PDGA#→holder confirmation (Spec 03 §3.5) — persists across
+ * refreshes once confirmed. Table exists now; the auto-match logic that
+ * populates it (and leaves ambiguous matches for the admin review queue) is
+ * Common B.
+ */
+export const playerMatches = sqliteTable(
+  "player_matches",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    pdgaNumber: integer("pdga_number").notNull(),
+    holderId: integer("holder_id")
+      .notNull()
+      .references(() => tagHolders.id),
+    /** Director email, or null for an unconfirmed auto-match. */
+    confirmedBy: text("confirmed_by"),
+    confirmedAt: text("confirmed_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("player_matches_season_pdga_number_idx").on(table.seasonYear, table.pdgaNumber),
+  ],
+);
+
+/**
+ * Rating-as-of-date history per holder (Spec 02 §2.2) — the engine reads
+ * the latest `official` row with `effectiveDate <= target` for eligibility.
+ * Live per-round ratings may be recorded here as `official: false` for
+ * display only; they never gate eligibility.
+ */
+export const ratingsHistory = sqliteTable(
+  "ratings_history",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    holderId: integer("holder_id")
+      .notNull()
+      .references(() => tagHolders.id),
+    /** ET calendar date, `YYYY-MM-DD`. */
+    effectiveDate: text("effective_date").notNull(),
+    rating: integer("rating").notNull(),
+    official: integer("official", { mode: "boolean" }).notNull().default(true),
+  },
+  (table) => [
+    uniqueIndex("ratings_history_holder_date_official_idx").on(
+      table.holderId,
+      table.effectiveDate,
+      table.official,
+    ),
+    index("ratings_history_season_year_idx").on(table.seasonYear),
+  ],
+);
+
+/**
+ * Director-approved pool switch (Spec 02 §2.2, Spec 10 §10.2) — forfeits
+ * all points earned before `effectiveDate` (the engine honors this; not
+ * enforced here).
+ */
+export const poolSwitches = sqliteTable(
+  "pool_switches",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    holderId: integer("holder_id")
+      .notNull()
+      .references(() => tagHolders.id),
+    /** ET calendar date, `YYYY-MM-DD`. */
+    effectiveDate: text("effective_date").notNull(),
+    fromPool: text("from_pool", { enum: poolEnum }).notNull(),
+    toPool: text("to_pool", { enum: poolEnum }).notNull(),
+    approvedBy: text("approved_by").notNull(),
+  },
+  (table) => [
+    uniqueIndex("pool_switches_holder_effective_date_idx").on(table.holderId, table.effectiveDate),
+    index("pool_switches_season_year_idx").on(table.seasonYear),
+  ],
+);
+
+/**
+ * Paid entries per League Night (Spec 09 §9.2) — the cash source of truth,
+ * recorded by a director each night, not derived from PDGA presence. Feeds
+ * the OLP-pot slice (Spec 06).
+ */
+export const entryCounts = sqliteTable(
+  "entry_counts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id),
+    paidEntries: integer("paid_entries").notNull(),
+  },
+  (table) => [
+    uniqueIndex("entry_counts_event_id_idx").on(table.eventId),
+    index("entry_counts_season_year_idx").on(table.seasonYear),
   ],
 );
 
@@ -94,6 +301,41 @@ export const directors = sqliteTable("directors", {
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
 });
+
+/**
+ * Who/what/when/before/after for every admin change (Spec 10 §10.1) —
+ * append-only, so overrides stay attributable and reversible. Every admin
+ * write is expected to insert exactly one row here alongside its own
+ * table's write, then trigger recompute (sub-plan 06).
+ */
+export const auditLog = sqliteTable(
+  "audit_log",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    actorEmail: text("actor_email").notNull(),
+    /** Free-form verb, e.g. `create`, `update`, `cancel-event`. */
+    action: text("action").notNull(),
+    /** e.g. `tagHolder`, `event`, `poolSwitch`. */
+    entityType: text("entity_type").notNull(),
+    /** Text, not integer, so a single column covers every entity's id
+     * shape (including composite/natural keys down the line). */
+    entityId: text("entity_id").notNull(),
+    /** JSON snapshot of the row before the change; null for a create. */
+    before: text("before", { mode: "json" }),
+    /** JSON snapshot of the row after the change; null for a delete. */
+    after: text("after", { mode: "json" }),
+    at: text("at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (table) => [
+    index("audit_log_season_year_idx").on(table.seasonYear),
+    index("audit_log_entity_idx").on(table.entityType, table.entityId),
+  ],
+);
 
 /** How a `refresh_runs` row was triggered. */
 export const refreshTriggerEnum = ["manual", "scheduled"] as const;
