@@ -40,7 +40,7 @@ Plus, per player: **present player rating** displayed prominently, and a small *
 
 ## 5.5 States
 
-- Only **tag holders** are listed; non-tag-holder rounds are **hidden** (they exist in the ingested data only to compute finish order). Decided with the league.
+- Only **tag holders** are listed; non-tag-holder rounds are **hidden** (they exist in the ingested data only to compute finish order).
 - **Freshness** and **stale** indicators as in [Spec 04 §4.4](./04-Feature-Leaderboards.md#44-states).
 - Unmatched PDGA entrants do not appear as phantom players; they wait in the admin queue.
 
@@ -54,15 +54,5 @@ Plus, per player: **present player rating** displayed prominently, and a small *
 - Present rating matches the latest refresh; round ratings match PDGA; unrated rounds show "pending."
 - Sub-league filter correctly partitions rounds across the 3 separate PDGA events.
 - Deep links restore filter state.
-
-## Resolved decisions
-
-- **Rounds scope** → default **League-Night rounds**, with a filter to add Tournament/FOD Open rounds; profiles show all ([§5.3](#53-filters)).
-- **Non-tag-holders** → **hidden** everywhere in this view ([§5.5](#55-states)).
-- **Present rating** → latest **official** PDGA rating; round ratings shown as **unofficial** until superseded.
-
-## Remaining open questions
-
-- Show a numeric rating-change indicator vs the Season start, or just the trend line? (Presentation detail — default: trend line + current official rating.)
 
 ← Prev: [04 — Leaderboards](./04-Feature-Leaderboards.md) · Next: [06 — OLP Pot](./06-Feature-OLP-Pot.md)

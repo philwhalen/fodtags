@@ -51,11 +51,4 @@ Per glossary, "each season" = **each sub-league** (Early / Mid / Late). The OLP 
 - Projected payouts sum to the pot (modulo rounding) and flip to "final" on sub-league completion.
 - Each component column reconciles to the displayed OLP score.
 
-## Resolved decisions
-
-- **Average score-to-par** → mean of played rounds, canceled/absent excluded, one-decimal display ([Spec 02 §2.8](./02-Domain-Model-and-Scoring.md#28-overall-league-performance-olp)).
-- **Payout rounding** → largest-remainder so shares sum to the pot ([§6.3](#63-payouts)).
-- **PDGA-membership source** → **admin flag on the roster** ([§6.2](#62-columns)).
-- **OLP grouping** → across **both pools together** per sub-league (from the rules), unlike the per-pool leaderboards.
-
 ← Prev: [05 — Rounds & Ratings](./05-Feature-Rounds-and-Ratings.md) · Next: [07 — Pool Score Sheets](./07-Feature-Pool-Score-Sheets.md)

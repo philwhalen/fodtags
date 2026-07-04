@@ -46,6 +46,8 @@ EventSource {
 
 The sub-league structure (3 separate PDGA events) is a launch decision ([Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)). The app must handle **multiple events per Season** and correctly attribute each round to its sub-league/tournament.
 
+**Pool ≠ PDGA division.** Pool (A / B) is a league overlay stored on the roster, not a PDGA division. The scraper reads whatever PDGA division(s) the event uses; pool assignment is applied from admin data during player matching.
+
 ## 3.5 Player matching ("Admin maps, app assists")
 
 Only tag holders score, so every PDGA entrant must be resolved to a tag holder or explicitly ignored.
@@ -91,17 +93,5 @@ Fetch (per source) → Normalize → Match players → Persist snapshot
 - A single source failing leaves other sources' data intact and flags the failure.
 - A newly appearing PDGA entrant with no confident match lands in the admin review queue and is excluded from points until resolved.
 - Every public number is traceable to `(eventSource, round, refreshRun)`.
-
-## Resolved decisions
-
-- **Endpoint** → scrape PDGA Live pages / `live-api` (no official API at launch); browser-like headers + headless fallback. See [§3.1](#31-known-constraint-pdga-blocks-naive-clients-and-has-no-open-api).
-- **Ratings freshness** → live unofficial round ratings at the Thursday pull; a separate **monthly official-rating pull** for eligibility/OLP. See [§3.1](#31-known-constraint-pdga-blocks-naive-clients-and-has-no-open-api).
-- **Event IDs** → the **admin registers** each sub-league/tournament/FOD Open event ID and type as they're scheduled ([Spec 10 §10.3](./10-Admin-Console.md#103-pdga-event-configuration)).
-- **Pools vs divisions** → **pool is a league overlay stored on the roster**, not a PDGA division. The scraper reads whatever PDGA division(s) the event uses; pool assignment is applied from admin data during matching.
-
-## Remaining open questions
-
-- Confirm the precise `live-api` request signature that avoids the 403 (implementation spike; may require session/cookie priming via the headless path).
-- Whether a mid-week corrective pull is ever needed for late PDGA score edits, or the Thursday 9 PM + monthly cadence suffices.
 
 ← Prev: [02 — Domain Model](./02-Domain-Model-and-Scoring.md) · Next: [04 — Leaderboards](./04-Feature-Leaderboards.md)

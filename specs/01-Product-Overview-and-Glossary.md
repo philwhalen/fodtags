@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Establish shared vocabulary. The league's own documents overload the words "league" and "season," which caused the ambiguity resolved in [Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution). Every other spec uses the terms exactly as defined here.
+Establish shared vocabulary. The league's own documents overload the words "league" and "season"; the terms below disambiguate them, consistent with [Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution). Every other spec uses the terms exactly as defined here.
 
 ## The competition hierarchy
 

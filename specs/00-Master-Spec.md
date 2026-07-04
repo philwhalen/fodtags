@@ -1,6 +1,6 @@
 # FOD Tags Aggregator — Master Product Requirements
 
-> Read-only web aggregator for the **Field of Dreams (FOD) Club Championship**, a season-long, tag-holder disc golf league. This document is the entry point; it links to logically grouped sub-specs and records the product decisions that bind them together.
+> Read-only web aggregator for the **Field of Dreams (FOD) Club Championship**, a season-long, tag-holder disc golf league. This document is the entry point; it links to logically grouped sub-specs and states the product rules that bind them together.
 
 ## 1. Product vision
 
@@ -48,7 +48,7 @@ The four Core Spec features, plus the supporting capabilities they require:
 
 ## 5. Cross-cutting decisions (the "constitution")
 
-These were settled with the league and constrain every sub-spec. Change them here first.
+These constrain every sub-spec. Change them here first.
 
 | Topic | Decision |
 |---|---|
@@ -80,7 +80,8 @@ These were settled with the league and constrain every sub-spec. Change them her
 8. [Feature: Player Profiles](./08-Feature-Player-Profiles.md) — player detail pages.
 9. [Financials](./09-Financials.md) — full transparency views.
 10. [Admin Console](./10-Admin-Console.md) — roster, config, matching, financial inputs, adjustments, refresh.
-11. [UX & Non-Functional Requirements](./11-UX-and-Nonfunctional.md) — mobile, performance, accessibility, stack, and consolidated open questions.
+11. [UX & Non-Functional Requirements](./11-UX-and-Nonfunctional.md) — mobile, performance, accessibility, and the recommended technical shape.
+12. [Architecture & Scaffold](./12-Architecture.md) — concrete technical decisions (Next.js + SQLite/Drizzle on a GCP VM), layering, job model, and the walking-skeleton scope.
 
 ## 7. Source material
 
@@ -89,7 +90,3 @@ These were settled with the league and constrain every sub-spec. Change them her
 - League rules & bonus math: [Google Doc](https://docs.google.com/document/d/1wegvE6lmUqf7xBVxYSqp25DBvEJtEh82uBhpfH28lwE/edit)
 - Current season (2026) PDGA event: [104527](https://www.pdga.com/live/event/104527/leaders)
 - Prior season PDGA event: [102021](https://www.pdga.com/live/event/102021/leaders)
-
-## 8. Decisions & open questions
-
-The two clarification rounds resolved the material questions; see the consolidated **[Decisions log](./11-UX-and-Nonfunctional.md#decisions-log-previously-open-now-resolved)** in Spec 11. The few small items that remain (none blocking the build) are in **[Remaining open questions](./11-UX-and-Nonfunctional.md#remaining-open-questions)**.

@@ -36,7 +36,7 @@ Expandable per player to a **line-item detail**:
 
 ## 7.3 Relationship to the spreadsheet's "score sheet"
 
-The legacy Google Sheet showed per-pool ranked lists with skins-pot values attached. This app **separates concerns**: the competitive points breakdown lives here (points only); **all skins/CTP purse math lives in [Financials](./09-Financials.md)**, cross-linked from this page. Decided with the league.
+The legacy Google Sheet showed per-pool ranked lists with skins-pot values attached. This app **separates concerns**: the competitive points breakdown lives here (points only); **all skins/CTP purse math lives in [Financials](./09-Financials.md)**, cross-linked from this page.
 
 ## 7.4 States
 
@@ -53,11 +53,5 @@ The legacy Google Sheet showed per-pool ranked lists with skins-pot values attac
 - Best-15 League-Night and best-2/3 Tournament caps are correctly applied and the dropped items are shown.
 - Switching pools shows the correct roster and breakdowns.
 - The stated caps reflect the actual tournament count for the Season.
-
-## Resolved decisions
-
-- **Skins/CTP summary** → lives in [Financials](./09-Financials.md), not here; this page is points-only, cross-linked ([§7.3](#73-relationship-to-the-spreadsheets-score-sheet)).
-- **Dropped results** → collapsed behind a "show all" expander by default ([§7.2](#72-explainability-requirements)).
-- **Ranking** → the score sheet explains totals; ranking is presented on the [leaderboard](./04-Feature-Leaderboards.md). A player's rank may be shown for orientation but the leaderboard is canonical.
 
 ← Prev: [06 — OLP Pot](./06-Feature-OLP-Pot.md) · Next: [08 — Player Profiles](./08-Feature-Player-Profiles.md)

@@ -4,7 +4,7 @@
 
 ## Purpose
 
-A dedicated page per tag holder that unifies everything the app knows about them. Not one of the four Core Spec features, but selected as a launch UX priority ([Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)) and the natural tap-target from every leaderboard/score-sheet/rounds row.
+A dedicated page per tag holder that unifies everything the app knows about them. Not one of the four Core Spec features, but selected as a launch UX priority ([Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)) and the natural tap-target from every leaderboard/score-sheet/rounds row. **Profiles exist only for tag holders**; non-tag-holders who appear in PDGA data get no profile.
 
 ## User stories
 
@@ -39,14 +39,5 @@ Sections (each links to the fuller feature view):
 - Every leaderboard/score-sheet/rounds/OLP row links to the correct profile.
 - Profile figures reconcile exactly with the source feature pages (no divergent totals).
 - Slugs are stable and shareable; collisions resolve deterministically.
-
-## Resolved decisions
-
-- **Profiles are for tag holders only.** Non-tag-holders who appear in PDGA data get no profile.
-- **Privacy** → full names and PDGA numbers are shown publicly, with rows linking out to PDGA profiles ([Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)).
-
-## Remaining open questions
-
-- Include historical placeholder sections now (for future multi-year), or add them when past seasons ship? (Default: add when history ships.)
 
 ← Prev: [07 — Pool Score Sheets](./07-Feature-Pool-Score-Sheets.md) · Next: [09 — Financials](./09-Financials.md)

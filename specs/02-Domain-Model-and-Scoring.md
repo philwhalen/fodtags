@@ -54,7 +54,7 @@ Points by finishing position **among tag holders only** (non-tag-holders are ski
 Rules for awarding:
 - **Finish position is computed among tag holders present**, ignoring non-tag-holders. (The top tag holder gets 1st even if 3 non-holders beat them.)
 - Points are awarded **regardless of attendance count**, as long as the event isn't canceled (3 attendees → top-3 points).
-- **All finishes are ranked per-pool** (decided with the league). This applies to **every** event type — League Nights, League Podiums, Tournaments, and the FOD Open: Pool A and Pool B each have their own 1st place and each earn the full points for that place. A player's finish is computed only against the other tag holders **in their own pool** at that event.
+- **All finishes are ranked per-pool.** This applies to **every** event type — League Nights, League Podiums, Tournaments, and the FOD Open: Pool A and Pool B each have their own 1st place and each earn the full points for that place. A player's finish is computed only against the other tag holders **in their own pool** at that event.
 
 ## 2.5 "Top-N counts" aggregation
 
@@ -116,18 +116,5 @@ A separate competition, computed **per sub-league**, entered by **every** tag ho
 - Dropped results (beyond top-N caps) are identifiable in output.
 - A canceled League Night contributes zero points everywhere (including OLP round counts).
 - Rating-as-of-date logic correctly gates Pool B accrual at 920.
-
-## Resolved decisions
-
-- **Ranking scope** → **per pool for every event type** (League Night, Podium, Tournament, FOD Open). See [§2.4](#24-points--table-21).
-- **OLP average score-to-par** → mean of played rounds' strokes-to-par; canceled/absent rounds excluded; one-decimal display. See [§2.8](#28-overall-league-performance-olp).
-- **Rating source for eligibility** → **official monthly PDGA ratings**, read as-of-date; live round ratings are unofficial and never gate eligibility. See [§2.2](#22-pools--eligibility).
-- **Tournament count threshold** → derived from registered tournament event sources; recomputes across the 3→4 boundary mid-season; final at Season end. See [§2.5](#25-top-n-counts-aggregation).
-- **OLP payout rounding** → largest-remainder so payouts sum to the pot. See [§2.8](#28-overall-league-performance-olp).
-
-## Remaining open questions
-
-- Confirm that "strokes-to-par" uses the course par as PDGA reports it per round (edge case: mixed layouts within a sub-league).
-- If a player's official rating updates mid-sub-league, the OLP "rating on last day" naturally uses the latest official value — confirm no snapshotting of an earlier value is expected.
 
 ← [Master Spec](./00-Master-Spec.md) · Next: [03 — Data Ingestion](./03-Data-Ingestion-and-PDGA.md)

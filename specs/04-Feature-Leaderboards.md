@@ -25,7 +25,7 @@ Per [Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)
 
 ## 4.2 Columns (mobile-first, PDGA-style)
 
-| Rank | Player | Tag # | Points | (Δ / trend, optional) |
+| Rank | Player | Tag # | Points |
 
 - **Rank** reflects tie-breakers ([Spec 02 §2.6](./02-Domain-Model-and-Scoring.md#26-tie-breakers)) — low tag number breaks ties, so tied point totals still order deterministically.
 - **Points** is the aggregated total for the selected scope.
@@ -34,7 +34,7 @@ Per [Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)
 
 ## 4.3 Sub-league leaderboard content
 
-The sub-league view shows standings **within that sub-league**: **League-Night points accrued in that sub-league while it is in progress, with that sub-league's Podium bonus folded in once it is finalized** (decided with the league). Ranking is per-pool, like everywhere else.
+The sub-league view shows standings **within that sub-league**: **League-Night points accrued in that sub-league while it is in progress, with that sub-league's Podium bonus folded in once it is finalized.** Ranking is per-pool, like everywhere else.
 
 ## 4.4 States
 
@@ -56,11 +56,5 @@ Stable URLs encode scope + pool + sub-league, e.g.:
 - Tapping a row deep-links to that player's profile.
 - Deep links restore the exact view.
 - Stale/unmatched conditions render their banners.
-
-## Resolved decisions
-
-- **Sub-league total** → League-Night points + Podium bonus when final ([§4.3](#43-sub-league-leaderboard-content)).
-- **Both-pools combined view** → **not at launch**; per-pool is always the presentation. (Revisit later if requested.)
-- **Point movement (Δ)** → **not at launch**; keep the leaderboard clean.
 
 ← Prev: [03 — Data Ingestion](./03-Data-Ingestion-and-PDGA.md) · Next: [05 — Rounds & Ratings](./05-Feature-Rounds-and-Ratings.md)

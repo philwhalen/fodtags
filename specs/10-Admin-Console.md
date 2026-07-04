@@ -66,14 +66,4 @@ Per [Spec 09 §9.2](./09-Financials.md#92-whats-computed-vs-entered):
 - Every override is audited and shows provenance on the public side where relevant.
 - "Refresh now" and the scheduled job produce identical results.
 
-## Resolved decisions
-
-- **Auth** → Google sign-in against a **director email allowlist** ([§10.1](#101-access--audit)).
-- **Publish model** → edits **auto-publish** with audit; preview-before-publish deferred ([§10.8](#108-recompute--publish)).
-- **Financial inputs** → per-night entry counts, tag sales, opening balances, and payouts are **admin-entered**; the app derives all splits/balances ([Spec 09 §9.2](./09-Financials.md#92-whats-computed-vs-entered)).
-
-## Remaining open questions
-
-- Confirm the director allowlist (which Google accounts) and how a director is added/removed.
-
 ← Prev: [09 — Financials](./09-Financials.md) · Next: [11 — UX & Non-Functional](./11-UX-and-Nonfunctional.md)

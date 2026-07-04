@@ -37,7 +37,7 @@ The league chose **full financial transparency** ([Master §5](./00-Master-Spec.
    - **Skins**: per pool, current purse, skin value, amount paid, remainder carried.
    - **OLP**: per sub-league pot and projected/final 50-30-20 payouts (mirrors [Spec 06](./06-Feature-OLP-Pot.md)).
    - **Ace pot**: current balance, contribution rate, and any wins.
-3. **Full ledger** — a chronological, public record of every inflow (tag sales, per-night entry splits, ace contributions) and outflow (OLP/skins payouts, ace wins, expenses) with running balances. This is a launch requirement (the league chose summary **+** full ledger). Each entry links back to its source (a League Night, a tag sale, a recorded payout).
+3. **Full ledger** — a chronological, public record of every inflow (tag sales, per-night entry splits, ace contributions) and outflow (OLP/skins payouts, ace wins, expenses) with running balances. This is a launch requirement. Default granularity is **one row per League Night, expandable to its splits**. Each entry links back to its source (a League Night, a tag sale, a recorded payout).
 
 ## 9.4 Correctness & display
 
@@ -51,16 +51,5 @@ The league chose **full financial transparency** ([Master §5](./00-Master-Spec.
 - Pool A/B skins split is 66.67/33.33 of the $2.80 component and reconciles to total entries.
 - OLP pot per sub-league equals $1 × entries in that sub-league (± admin adjustments), and matches the payout figures on the OLP page.
 - Public summary + pot detail render with provenance and projected/final labels.
-
-## Resolved decisions
-
-- **Depth** → summary balances + pot detail **+ a full chronological ledger** at launch ([§9.3](#93-public-financial-views)).
-- **Entry counts** → **admin-entered per League Night** (real cash source of truth), not derived from PDGA presence ([§9.2](#92-whats-computed-vs-entered)).
-- **Opening balances** → admin-entered for 2026 (carried ace pot / reserves).
-- **Payouts** → admin records skins claimed and OLP paid as they happen; the ledger reflects them.
-
-## Remaining open questions
-
-- Exact ledger granularity for entry splits — one ledger row per night with sub-splits, or separate rows per pot? (Presentation detail; default: one row per night, expandable to its splits.)
 
 ← Prev: [08 — Player Profiles](./08-Feature-Player-Profiles.md) · Next: [10 — Admin Console](./10-Admin-Console.md)

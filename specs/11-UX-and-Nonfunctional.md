@@ -56,45 +56,6 @@ Selected launch priorities ([Master §5](./00-Master-Spec.md#5-cross-cutting-dec
 - Headless-browser capability available as a fallback for PDGA's bot protection.
 - Hosting/stack TBD with the team; whatever supports scheduled jobs, server-side fetch, and a small admin surface.
 
-> Stack specifics are deliberately left open — this is a PRD, not an architecture doc. Confirm with the build team.
-
-## Decisions log (previously open, now resolved)
-
-Resolved with the league in two clarification rounds. Each sub-spec carries the detail; this is the index.
-
-| Area | Decision |
-|---|---|
-| Ranking scope ([02](./02-Domain-Model-and-Scoring.md)) | **Per-pool for every event type** (League Night, Podium, Tournament, FOD Open). |
-| OLP average ([02](./02-Domain-Model-and-Scoring.md)/[06](./06-Feature-OLP-Pot.md)) | Mean of played rounds; canceled/absent excluded; one decimal. |
-| Eligibility ratings ([02](./02-Domain-Model-and-Scoring.md)) | **Official monthly** PDGA ratings gate 900/920; live round ratings shown as unofficial. |
-| Tournament cap ([02](./02-Domain-Model-and-Scoring.md)) | Derived from registered tournaments; recomputes across the 3→4 boundary; final at Season end. |
-| OLP payout rounding ([02](./02-Domain-Model-and-Scoring.md)/[06](./06-Feature-OLP-Pot.md)) | Largest-remainder so shares sum to the pot. |
-| PDGA access ([03](./03-Data-Ingestion-and-PDGA.md)) | No official API at launch; scrape Live + headless fallback; monthly official-rating pull. |
-| Round-rating freshness ([03](./03-Data-Ingestion-and-PDGA.md)) | Live/unofficial at Thursday pull; official refreshed monthly (2nd Tue). |
-| Event IDs ([03](./03-Data-Ingestion-and-PDGA.md)/[10](./10-Admin-Console.md)) | Admin registers each event ID + type as scheduled. |
-| Pools vs divisions ([03](./03-Data-Ingestion-and-PDGA.md)) | Pool is a **league overlay on the roster**, not a PDGA division. |
-| Sub-league total ([04](./04-Feature-Leaderboards.md)) | League-Night points + Podium bonus once final. |
-| Both-pools view / Δ movement ([04](./04-Feature-Leaderboards.md)) | Not at launch; per-pool only, no delta column. |
-| Rounds scope ([05](./05-Feature-Rounds-and-Ratings.md)) | Default League-Night rounds + filter to add Tournament/FOD Open; profiles show all. |
-| Non-tag-holders ([05](./05-Feature-Rounds-and-Ratings.md)/[08](./08-Feature-Player-Profiles.md)) | Hidden; no profiles. |
-| PDGA membership ([06](./06-Feature-OLP-Pot.md)) | Admin flag on roster. |
-| Skins/CTP location ([07](./07-Feature-Pool-Score-Sheets.md)/[09](./09-Financials.md)) | In Financials; score sheet is points-only. |
-| Dropped results ([07](./07-Feature-Pool-Score-Sheets.md)) | Collapsed behind "show all" by default. |
-| Privacy ([08](./08-Feature-Player-Profiles.md)) | Public full names + PDGA numbers, linking out to PDGA. |
-| Financials depth ([09](./09-Financials.md)) | Summary + pot detail **+ full ledger**. |
-| Entry counts ([09](./09-Financials.md)/[10](./10-Admin-Console.md)) | Admin-entered per night (cash source of truth). |
-| Admin auth ([10](./10-Admin-Console.md)) | Google sign-in against a director allowlist. |
-| Publish model ([10](./10-Admin-Console.md)) | Auto-publish with audit; preview deferred. |
-
-## Remaining open questions
-
-Small / deferrable — none blocks starting the build:
-
-- **PDGA scrape signature** ([03](./03-Data-Ingestion-and-PDGA.md)) — the exact request shape that avoids the 403 needs an implementation spike; may need session/cookie priming via the headless path.
-- **Mixed-layout par** ([02](./02-Domain-Model-and-Scoring.md)) — confirm "score-to-par" handling if a sub-league mixes layouts within a round set.
-- **Ledger granularity** ([09](./09-Financials.md)) — one row per night with sub-splits vs per-pot rows (default: per-night, expandable).
-- **Rating-change display** ([05](./05-Feature-Rounds-and-Ratings.md)) — numeric delta vs trend line (default: trend line).
-- **Director allowlist** ([10](./10-Admin-Console.md)) — which Google accounts, and the add/remove process.
-- **Meta (build-team decisions):** hosting/stack (must support scheduled jobs, server-side fetch, headless fallback, small admin surface); any league branding/visual identity.
+> Stack specifics are deliberately left open here — this section is the non-binding PRD view; the concrete architecture is settled in [Spec 12](./12-Architecture.md).
 
 ← Prev: [10 — Admin Console](./10-Admin-Console.md) · [Master Spec](./00-Master-Spec.md)
