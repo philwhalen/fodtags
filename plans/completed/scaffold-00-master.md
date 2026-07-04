@@ -66,21 +66,23 @@ On process start, in order:
 
 Each sub-plan is implemented by a **general-purpose sub-agent on Sonnet 5**, spawned sequentially. After each run the output is verified with the **full gate** — file review + `typecheck` + `lint` + `build` (+ `vitest` once tests exist) — before the next agent is spawned. **Tokens** = the sub-agent's own token usage as reported in the Agent tool result (this turned out to be available after all; the 5-hour quota **percentage** is still omitted because the orchestrator has no reliable denominator for it).
 
-| # | Sub-plan | Agent / model | Tokens | Tool calls | Verification | Result |
-|---|----------|---------------|-------:|-----------:|--------------|--------|
-| 01 | Project bootstrap | general-purpose / Sonnet 5 | 66,377 | 45 | typecheck ✓ · lint ✓ · build ✓ · standalone ✓ | ✅ pass |
-| 02 | Config & logging | general-purpose / Sonnet 5 | 48,829 | 36 | typecheck ✓ · lint ✓ · build ✓ · boot log ✓ | ✅ pass |
-| 03 | Data layer | general-purpose / Sonnet 5 | 106,514 | 93 | typecheck ✓ · lint ✓ · build ✓ · fresh-boot migrate+seed ✓ · idempotent ✓ | ✅ pass |
-| 04 | Pure engine | general-purpose / Sonnet 5 | 40,880 | 25 | typecheck ✓ · lint ✓ · build ✓ · OLP 81.3/81.4 ✓ · purity grep clean ✓ | ✅ pass |
-| 05 | Read model | general-purpose / Sonnet 5 | 61,990 | 32 | typecheck ✓ · lint ✓ · build ✓ · atomic rollback ✓ · v1→v2 bump ✓ | ✅ pass |
-| 06 | Ingestion pipeline | general-purpose / Sonnet 5 | 87,702 | 61 | typecheck ✓ · lint ✓ · build ✓ · manual run ✓ · single-flight ✓ · raw cache ✓ | ✅ pass |
-| 07 | Scheduler & jobs | general-purpose / Sonnet 5 | 62,691 | 41 | typecheck ✓ · lint ✓ · build ✓ · boot next-fire logs ✓ · 2nd-Tue ✓ (6 mo) · idempotent ✓ | ✅ pass |
-| 08 | Auth & admin | general-purpose / Sonnet 5 | 115,715 | 86 | typecheck ✓ · lint ✓ · build ✓ · bootstrap idempotent ✓ · /admin 307 · POST refresh 401 · / 200 | ✅ pass |
-| 09 | Public page & health | general-purpose / Sonnet 5 | 63,433 | 41 | typecheck ✓ (clean-state) · lint ✓ · build ✓ · pool-a roster 0pts+ET ✓ · /→307 · health 200 | ✅ pass |
-| 10 | Testing & CI | general-purpose / Sonnet 5 | 89,083 | 57 | typecheck ✓ · lint ✓ · build ✓ · vitest 4/4 ✓ · CI-sim (no .env) ✓ · YAML valid ✓ | ✅ pass |
-| 11 | Ops & docs | general-purpose / Sonnet 5 | 53,864 | 34 | typecheck ✓ · lint ✓ · build ✓ · VACUUM INTO snapshot valid ✓ · retention prune ✓ · shellcheck ✓ | ✅ pass |
+| # | Sub-plan | Agent / model | Tokens | Cost (Sonnet 5)¹ | Tool calls | Verification | Result |
+|---|----------|---------------|-------:|-----------------:|-----------:|--------------|--------|
+| 01 | Project bootstrap | general-purpose / Sonnet 5 | 66,377 | $0.2390 | 45 | typecheck ✓ · lint ✓ · build ✓ · standalone ✓ | ✅ pass |
+| 02 | Config & logging | general-purpose / Sonnet 5 | 48,829 | $0.1758 | 36 | typecheck ✓ · lint ✓ · build ✓ · boot log ✓ | ✅ pass |
+| 03 | Data layer | general-purpose / Sonnet 5 | 106,514 | $0.3835 | 93 | typecheck ✓ · lint ✓ · build ✓ · fresh-boot migrate+seed ✓ · idempotent ✓ | ✅ pass |
+| 04 | Pure engine | general-purpose / Sonnet 5 | 40,880 | $0.1472 | 25 | typecheck ✓ · lint ✓ · build ✓ · OLP 81.3/81.4 ✓ · purity grep clean ✓ | ✅ pass |
+| 05 | Read model | general-purpose / Sonnet 5 | 61,990 | $0.2232 | 32 | typecheck ✓ · lint ✓ · build ✓ · atomic rollback ✓ · v1→v2 bump ✓ | ✅ pass |
+| 06 | Ingestion pipeline | general-purpose / Sonnet 5 | 87,702 | $0.3157 | 61 | typecheck ✓ · lint ✓ · build ✓ · manual run ✓ · single-flight ✓ · raw cache ✓ | ✅ pass |
+| 07 | Scheduler & jobs | general-purpose / Sonnet 5 | 62,691 | $0.2257 | 41 | typecheck ✓ · lint ✓ · build ✓ · boot next-fire logs ✓ · 2nd-Tue ✓ (6 mo) · idempotent ✓ | ✅ pass |
+| 08 | Auth & admin | general-purpose / Sonnet 5 | 115,715 | $0.4166 | 86 | typecheck ✓ · lint ✓ · build ✓ · bootstrap idempotent ✓ · /admin 307 · POST refresh 401 · / 200 | ✅ pass |
+| 09 | Public page & health | general-purpose / Sonnet 5 | 63,433 | $0.2284 | 41 | typecheck ✓ (clean-state) · lint ✓ · build ✓ · pool-a roster 0pts+ET ✓ · /→307 · health 200 | ✅ pass |
+| 10 | Testing & CI | general-purpose / Sonnet 5 | 89,083 | $0.3207 | 57 | typecheck ✓ · lint ✓ · build ✓ · vitest 4/4 ✓ · CI-sim (no .env) ✓ · YAML valid ✓ | ✅ pass |
+| 11 | Ops & docs | general-purpose / Sonnet 5 | 53,864 | $0.1939 | 34 | typecheck ✓ · lint ✓ · build ✓ · VACUUM INTO snapshot valid ✓ · retention prune ✓ · shellcheck ✓ | ✅ pass |
 
-**Totals:** **797,078 tokens** across all 11 sub-agents (avg ~72.5k/agent). Plus orchestrator verification overhead (not counted here). Per-agent range: 40,880 (04) – 115,715 (08).
+**Totals:** **797,078 tokens** across all 11 sub-agents (avg ~72.5k/agent), for an estimated **$2.87** in Sonnet 5 API cost¹. Plus orchestrator verification overhead (not counted here). Per-agent range: 40,880 (04) – 115,715 (08).
+
+> ¹ **Cost basis.** Sonnet 5 introductory rates (in effect through 2026‑08‑31): input **$2.00 / 1M** tokens, output **$10.00 / 1M** tokens (standard rates are $3.00 / $15.00). The Agent-tool `<usage>` reports only a **combined** token total with no input/output split, so cost is estimated on an assumed **80% input / 20% output** split — a blended **$3.60 / 1M** tokens (0.8 × $2.00 + 0.2 × $10.00).
 
 > **Note on token/quota tracking:** the 5-hour usage **quota %** requested at kickoff is omitted — the orchestrator has no reliable denominator for it. Per-agent **token** counts (above) came from each Agent tool result's `<usage>` block, which turned out to be available after the initial assumption that it wasn't.
 
