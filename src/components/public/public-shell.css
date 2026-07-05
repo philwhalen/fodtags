@@ -96,6 +96,60 @@
   color: var(--shell-muted);
 }
 
+.lb-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.lb-segment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  background: var(--shell-surface);
+  border: 1px solid var(--shell-border);
+}
+
+.lb-segment-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--shell-tap-min);
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.375rem;
+  color: var(--shell-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lb-segment-option:hover,
+.lb-segment-option:focus-visible {
+  color: var(--shell-text);
+  background: rgba(61, 158, 239, 0.12);
+  outline: 2px solid var(--shell-accent);
+  outline-offset: 2px;
+}
+
+.lb-segment-option[data-active] {
+  color: var(--shell-bg);
+  background: var(--shell-accent);
+}
+
+.lb-picker {
+  flex-wrap: wrap;
+}
+
+.lb-picker-current {
+  color: inherit;
+  opacity: 0.8;
+  font-weight: 400;
+}
+
 .freshness-header {
   margin-bottom: 1rem;
 }
@@ -148,6 +202,80 @@
 
 .standings-empty {
   padding: 1.5rem 1rem;
+  text-align: center;
+  color: var(--shell-muted);
+  border: 1px dashed var(--shell-border);
+  border-radius: 0.5rem;
+}
+
+.standings-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.standings-filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.standings-filter-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.standings-filter-input {
+  flex: 1 1 auto;
+  min-height: var(--shell-tap-min);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--shell-border);
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  font-size: 0.9375rem;
+}
+
+.standings-filter-input:focus-visible {
+  outline: 2px solid var(--shell-accent);
+  outline-offset: 2px;
+}
+
+.standings-filter-clear {
+  flex: 0 0 auto;
+  min-height: var(--shell-tap-min);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--shell-border);
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.standings-filter-clear:hover:not(:disabled),
+.standings-filter-clear:focus-visible {
+  color: var(--shell-bg);
+  background: var(--shell-accent);
+  outline: none;
+}
+
+.standings-filter-clear:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.standings-filter-no-match {
+  padding: 1.5rem 1rem;
+  margin: 0;
   text-align: center;
   color: var(--shell-muted);
   border: 1px dashed var(--shell-border);

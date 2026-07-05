@@ -65,8 +65,13 @@ The biggest technical risk, proven before the feature views so they render real 
 - Auto-match PDGA entrants → holders, plus the **player matching review queue** (admin).
 - Replaces the scaffold's stub source in the existing single-flight pipeline.
 
-### Feature 1 — Leaderboards  ([spec 04](../specs/04-Feature-Leaderboards.md))
+### Feature 1 — Leaderboards  ([spec 04](../specs/04-Feature-Leaderboards.md)) ✅ complete
+_Accepted and archived: [`plans/completed/leaderboards-00-master.md`](./completed/leaderboards-00-master.md) (token/cost accounting intact)._
+
 Championship (overall) + current sub-league toggle, per pool, with tie-break display.
+Delivered the interaction layer on the Common-A data path: unified view control
+(Overall Championship · Early · Mid · Late with "(now)"), pool toggle, `/sub-league`
+redirect alias to the current sub-league, and a client-side name filter.
 
 ### Feature 2 — Rounds & Ratings  ([spec 05](../specs/05-Feature-Rounds-and-Ratings.md))
 All-players and per-player round tables, sub-league/event-type filters, rating trend.
@@ -98,9 +103,9 @@ Aggregates all five prior views → built last.
 
 ## Next planning pass
 
-Take **Common Work B — Real PDGA ingestion** into the full spec-driven workflow: confirm/expand
-the relevant specs ([03 Ingestion](../specs/03-Data-Ingestion-and-PDGA.md), plus the matching
-review queue in [10 Admin](../specs/10-Admin-Console.md)), then produce `plans/common-b/00-master.md`
+Take **Feature 2 — Rounds & Ratings** into the full spec-driven workflow: confirm/expand
+[spec 05](../specs/05-Feature-Rounds-and-Ratings.md) (all-players and per-player round tables,
+sub-league/event-type filters, rating trend), then produce `plans/rounds-and-ratings/00-master.md`
 + sub-plans at implementation granularity.
 
-_Common Work A completed — see the ✅ marker above._
+_Common Work A/B and Feature 1 completed — see the ✅ markers above._

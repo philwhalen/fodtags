@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 
+import { LeaderboardControls } from "@/components/public/LeaderboardControls";
 import { StandingsView } from "@/components/public/StandingsView";
+import type { LeaderboardView } from "@/lib";
 import { isValidPool, poolLabel } from "@/lib/public-routes";
 import type { PublicStandingsViewPayload } from "@/lib/standings-view";
 import { getPublished } from "@server/db/repositories/readModel";
+import { getCurrentSubLeagueSlug } from "@server/readmodel/currentSubLeague";
 
 /**
  * Championship standings (Spec 04 §4.1 default view, §4.5 deep links).
@@ -24,6 +27,10 @@ export default async function ChampionshipPage({
   }
 
   const seasonYear = Number(season);
+  const currentSubLeague = getCurrentSubLeagueSlug(seasonYear) ?? "early";
+  const view: LeaderboardView = { seasonYear, scope: "championship", pool };
+  const controls = <LeaderboardControls view={view} currentSubLeague={currentSubLeague} />;
+
   const published = getPublished(seasonYear, `championship/${pool}`);
 
   if (!published) {
@@ -31,6 +38,7 @@ export default async function ChampionshipPage({
       <StandingsView
         title={`${season} Championship — ${poolLabel(pool)}`}
         seasonYear={seasonYear}
+        controls={controls}
         payload={{
           rows: [],
           updatedAt: new Date(0).toISOString(),
@@ -48,6 +56,7 @@ export default async function ChampionshipPage({
     <StandingsView
       title={`${season} Championship — ${poolLabel(pool)}`}
       seasonYear={seasonYear}
+      controls={controls}
       payload={payload}
     />
   );

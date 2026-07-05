@@ -7,7 +7,7 @@ import { hasStaleSource } from "@server/db/repositories/eventSources";
 import { countPending } from "@server/db/repositories/playerMatches";
 import { listHolders } from "@server/db/repositories/tagHolders";
 import { loadSeasonSnapshot } from "@server/db/repositories/seasonSnapshot";
-import type { Pool, SeasonStandingRow, SubLeagueType } from "@/lib";
+import type { Pool, SeasonStandingRow, SubLeagueType, SubLeagueWindow } from "@/lib";
 
 const POOLS: Pool[] = ["A", "B"];
 const SUB_LEAGUE_TYPES: SubLeagueType[] = ["EARLY", "MID", "LATE"];
@@ -51,13 +51,25 @@ export interface StandingsViewPayload {
   finalized?: boolean;
 }
 
+/**
+ * Payload for the `sub-leagues` meta view (Spec 04 §4.3/§4.5 boundary
+ * decision): the admin-configured window for each sub-league, so public
+ * routes can resolve "current" at request time (`resolveCurrentSubLeague`
+ * in `src/lib/current-sub-league.ts`) without ever reading `event_sources`
+ * directly.
+ */
+export interface SubLeagueMetaPayload {
+  subLeagues: SubLeagueWindow[];
+  updatedAt: string;
+}
+
 /** One not-yet-published view row, keyed by the deep-link-aligned `viewKey`. */
 export interface ViewRow {
   seasonYear: number;
   /** e.g. `championship/pool-a`, `sub-league/mid/pool-b` (Spec 04 §4.5
-   * deep-link naming). */
+   * deep-link naming), or the `sub-leagues` meta view key. */
   viewKey: string;
-  payload: StandingsViewPayload;
+  payload: StandingsViewPayload | SubLeagueMetaPayload;
 }
 
 function toStandingsRows(
@@ -139,6 +151,23 @@ export function buildViews(seasonYear: number): ViewRow[] {
       });
     }
   }
+
+  // `sub-leagues` meta view (Spec 04 §4.3/§4.5 boundary decision): sourced
+  // from the snapshot already loaded above — no separate `event_sources`
+  // read here.
+  views.push({
+    seasonYear,
+    viewKey: "sub-leagues",
+    payload: {
+      subLeagues: snapshot.subLeagues.map((sl) => ({
+        type: sl.type,
+        startDate: sl.startDate,
+        endDate: sl.endDate,
+        complete: sl.complete,
+      })),
+      updatedAt,
+    },
+  });
 
   return views;
 }

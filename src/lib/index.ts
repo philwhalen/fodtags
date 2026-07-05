@@ -7,6 +7,13 @@ import type { Pool } from "./pool";
 
 export type { Pool } from "./pool";
 export { normalizeName } from "./normalize-name";
+export { todayEt } from "./date-et";
+export { resolveCurrentSubLeague } from "./current-sub-league";
+export type { SubLeagueWindow } from "./current-sub-league";
+export { resolveAliasTarget } from "./alias-target";
+export { buildLeaderboardLinks } from "./leaderboard-links";
+export type { LeaderboardLinks, LeaderboardView } from "./leaderboard-links";
+export { filterRowsByName } from "./filter-rows";
 
 // The `computeSeason` engine's input/output contract (Spec 02;
 // plans/common-a/02-engine-scoring.md) — kept here rather than imported
@@ -87,7 +94,11 @@ export function formatEt(iso: string): string {
   return `${formatted} ET`;
 }
 
-export type { PublicStandingsRow, PublicStandingsViewPayload } from "./standings-view";
+export type {
+  PublicStandingsRow,
+  PublicStandingsViewPayload,
+  PublicSubLeagueMetaPayload,
+} from "./standings-view";
 export {
   isValidPool,
   isValidSubLeague,

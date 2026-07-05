@@ -13,7 +13,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type { StandingsViewPayload, ViewRow } from "@server/readmodel/build";
+import type { StandingsViewPayload, SubLeagueMetaPayload, ViewRow } from "@server/readmodel/build";
 
 const SEASON_YEAR = 2026;
 
@@ -117,6 +117,21 @@ describe("read model: build -> publish -> read", () => {
     // pre-failure payload — readers never saw the partial write.
     expect(getCurrentVersion(SEASON_YEAR)).toBe(versionBefore);
     expect(getPublished(SEASON_YEAR, "championship/pool-a")).toEqual(poolABefore);
+  });
+
+  it("publishes a sub-leagues meta view matching the seed's windows", () => {
+    // EARLY complete 2026-04-01..2026-05-13; MID 2026-05-20..2026-07-01;
+    // LATE 2026-07-08..2026-08-26 (src/server/db/seed.ts).
+    const view = getPublished(SEASON_YEAR, "sub-leagues");
+    expect(view).toBeDefined();
+    const payload = view!.payload as SubLeagueMetaPayload;
+
+    expect(typeof payload.updatedAt).toBe("string");
+    expect(payload.subLeagues).toEqual([
+      { type: "EARLY", startDate: "2026-04-01", endDate: "2026-05-13", complete: true },
+      { type: "MID", startDate: "2026-05-20", endDate: "2026-07-01", complete: false },
+      { type: "LATE", startDate: "2026-07-08", endDate: "2026-08-26", complete: false },
+    ]);
   });
 
   it("bumps the version on a second publish", () => {
