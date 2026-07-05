@@ -2,7 +2,7 @@
 // specs/12-Architecture.md §12.1 / §12.4.
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@server/db/client";
 import { events, type EventType } from "@server/db/schema";
@@ -55,4 +55,49 @@ export function getEvent(id: number) {
 
 export function listEvents(seasonYear: number) {
   return db.select().from(events).where(eq(events.seasonYear, seasonYear)).all();
+}
+
+export interface UpsertLeagueNightInput {
+  seasonYear: number;
+  eventSourceId: number;
+  roundOrdinal: number;
+  label: string;
+  eventDate: string;
+}
+
+/** Idempotent upsert on `(eventSourceId, roundOrdinal)`. Updates PDGA-derived
+ * `label`/`eventDate` on conflict; never overwrites admin-owned `canceled`. */
+export function upsertLeagueNight(input: UpsertLeagueNightInput): number {
+  db.insert(events)
+    .values({
+      seasonYear: input.seasonYear,
+      eventSourceId: input.eventSourceId,
+      type: "LeagueNight",
+      label: input.label,
+      eventDate: input.eventDate,
+      roundOrdinal: input.roundOrdinal,
+      canceled: false,
+    })
+    .onConflictDoUpdate({
+      target: [events.eventSourceId, events.roundOrdinal],
+      set: {
+        label: input.label,
+        eventDate: input.eventDate,
+      },
+    })
+    .run();
+
+  const row = db
+    .select({ id: events.id })
+    .from(events)
+    .where(
+      and(eq(events.eventSourceId, input.eventSourceId), eq(events.roundOrdinal, input.roundOrdinal)),
+    )
+    .get();
+  if (row === undefined) {
+    throw new Error(
+      `upsertLeagueNight: row missing after upsert for source ${input.eventSourceId} round ${input.roundOrdinal}`,
+    );
+  }
+  return row.id;
 }

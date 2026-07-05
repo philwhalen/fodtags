@@ -1,0 +1,744 @@
+{
+    "data": {
+        "DateRange": "Thursdays \u00b7 May 21 - Jul 23",
+        "EndDate": "2026-07-23",
+        "Country": "United States",
+        "Location": "Great Meadows, New Jersey",
+        "LocationShort": "Great Meadows, NJ",
+        "Divisions": [
+            {
+                "DivisionID": 400,
+                "Division": "MA1",
+                "DivisionName": "Mixed Amateur 1",
+                "Players": 25,
+                "IsPro": false,
+                "ShortName": "Mixed Amateur 1",
+                "AbbreviatedName": "Mixed Am 1",
+                "LatestRound": 7
+            }
+        ],
+        "Finals": "no",
+        "HighestCompletedRound": 7,
+        "LatestRound": 7,
+        "FinalRound": 10,
+        "Layouts": [
+            {
+                "LayoutID": 758221,
+                "CourseID": 26852,
+                "CourseName": "Fields of Dreams",
+                "Name": "Long Tee to Yellow Basket with alts replacing 1 and 15",
+                "Holes": 18,
+                "Par": 60,
+                "Length": 6367,
+                "Units": "Feet",
+                "Accuracy": "M",
+                "Details": [
+                    {
+                        "Hole": "H1",
+                        "Label": "1",
+                        "Par": 3,
+                        "Length": 230
+                    },
+                    {
+                        "Hole": "H2",
+                        "Label": "2",
+                        "Par": 4,
+                        "Length": 458
+                    },
+                    {
+                        "Hole": "H3",
+                        "Label": "3",
+                        "Par": 3,
+                        "Length": 285
+                    },
+                    {
+                        "Hole": "H4",
+                        "Label": "4",
+                        "Par": 3,
+                        "Length": 232
+                    },
+                    {
+                        "Hole": "H5",
+                        "Label": "5",
+                        "Par": 4,
+                        "Length": 359
+                    },
+                    {
+                        "Hole": "H6",
+                        "Label": "6",
+                        "Par": 4,
+                        "Length": 564
+                    },
+                    {
+                        "Hole": "H7",
+                        "Label": "7",
+                        "Par": 4,
+                        "Length": 373
+                    },
+                    {
+                        "Hole": "H8",
+                        "Label": "8",
+                        "Par": 3,
+                        "Length": 255
+                    },
+                    {
+                        "Hole": "H9",
+                        "Label": "9",
+                        "Par": 3,
+                        "Length": 280
+                    },
+                    {
+                        "Hole": "H10",
+                        "Label": "10",
+                        "Par": 3,
+                        "Length": 266
+                    },
+                    {
+                        "Hole": "H11",
+                        "Label": "11",
+                        "Par": 3,
+                        "Length": 252
+                    },
+                    {
+                        "Hole": "H12",
+                        "Label": "12",
+                        "Par": 3,
+                        "Length": 301
+                    },
+                    {
+                        "Hole": "H13",
+                        "Label": "13",
+                        "Par": 4,
+                        "Length": 352
+                    },
+                    {
+                        "Hole": "H14",
+                        "Label": "14",
+                        "Par": 3,
+                        "Length": 344
+                    },
+                    {
+                        "Hole": "H15",
+                        "Label": "15",
+                        "Par": 4,
+                        "Length": 870
+                    },
+                    {
+                        "Hole": "H16",
+                        "Label": "16",
+                        "Par": 3,
+                        "Length": 245
+                    },
+                    {
+                        "Hole": "H17",
+                        "Label": "17",
+                        "Par": 3,
+                        "Length": 286
+                    },
+                    {
+                        "Hole": "H18",
+                        "Label": "18",
+                        "Par": 3,
+                        "Length": 415
+                    }
+                ]
+            },
+            {
+                "LayoutID": 760738,
+                "CourseID": 26852,
+                "CourseName": "Fields of Dreams",
+                "Name": "Short tee to Orange Basket with alt 18",
+                "Holes": 18,
+                "Par": 60,
+                "Length": 5979,
+                "Units": "Feet",
+                "Accuracy": "M",
+                "Details": [
+                    {
+                        "Hole": "H1",
+                        "Label": "1",
+                        "Par": 4,
+                        "Length": 420
+                    },
+                    {
+                        "Hole": "H2",
+                        "Label": "2",
+                        "Par": 3,
+                        "Length": 417
+                    },
+                    {
+                        "Hole": "H3",
+                        "Label": "3",
+                        "Par": 3,
+                        "Length": 204
+                    },
+                    {
+                        "Hole": "H4",
+                        "Label": "4",
+                        "Par": 3,
+                        "Length": 230
+                    },
+                    {
+                        "Hole": "H5",
+                        "Label": "5",
+                        "Par": 3,
+                        "Length": 234
+                    },
+                    {
+                        "Hole": "H6",
+                        "Label": "6",
+                        "Par": 4,
+                        "Length": 480
+                    },
+                    {
+                        "Hole": "H7",
+                        "Label": "7",
+                        "Par": 4,
+                        "Length": 312
+                    },
+                    {
+                        "Hole": "H8",
+                        "Label": "8",
+                        "Par": 3,
+                        "Length": 216
+                    },
+                    {
+                        "Hole": "H9",
+                        "Label": "9",
+                        "Par": 3,
+                        "Length": 192
+                    },
+                    {
+                        "Hole": "H10",
+                        "Label": "10",
+                        "Par": 3,
+                        "Length": 303
+                    },
+                    {
+                        "Hole": "H11",
+                        "Label": "11",
+                        "Par": 4,
+                        "Length": 306
+                    },
+                    {
+                        "Hole": "H12",
+                        "Label": "12",
+                        "Par": 3,
+                        "Length": 225
+                    },
+                    {
+                        "Hole": "H13",
+                        "Label": "13",
+                        "Par": 4,
+                        "Length": 400
+                    },
+                    {
+                        "Hole": "H14",
+                        "Label": "14",
+                        "Par": 3,
+                        "Length": 339
+                    },
+                    {
+                        "Hole": "H15",
+                        "Label": "15",
+                        "Par": 4,
+                        "Length": 750
+                    },
+                    {
+                        "Hole": "H16",
+                        "Label": "16",
+                        "Par": 3,
+                        "Length": 261
+                    },
+                    {
+                        "Hole": "H17",
+                        "Label": "17",
+                        "Par": 3,
+                        "Length": 460
+                    },
+                    {
+                        "Hole": "H18",
+                        "Label": "18",
+                        "Par": 3,
+                        "Length": 230
+                    }
+                ]
+            },
+            {
+                "LayoutID": 761981,
+                "CourseID": 26852,
+                "CourseName": "Fields of Dreams",
+                "Name": "Long Tee to Yellow Basket with Alt Replacing 15",
+                "Holes": 18,
+                "Par": 61,
+                "Length": 6611,
+                "Units": "Feet",
+                "Accuracy": "M",
+                "Details": [
+                    {
+                        "Hole": "H1",
+                        "Label": "1",
+                        "Par": 4,
+                        "Length": 492
+                    },
+                    {
+                        "Hole": "H2",
+                        "Label": "2",
+                        "Par": 4,
+                        "Length": 458
+                    },
+                    {
+                        "Hole": "H3",
+                        "Label": "3",
+                        "Par": 3,
+                        "Length": 285
+                    },
+                    {
+                        "Hole": "H4",
+                        "Label": "4",
+                        "Par": 3,
+                        "Length": 232
+                    },
+                    {
+                        "Hole": "H5",
+                        "Label": "5",
+                        "Par": 4,
+                        "Length": 359
+                    },
+                    {
+                        "Hole": "H6",
+                        "Label": "6",
+                        "Par": 4,
+                        "Length": 564
+                    },
+                    {
+                        "Hole": "H7",
+                        "Label": "7",
+                        "Par": 4,
+                        "Length": 373
+                    },
+                    {
+                        "Hole": "H8",
+                        "Label": "8",
+                        "Par": 3,
+                        "Length": 255
+                    },
+                    {
+                        "Hole": "H9",
+                        "Label": "9",
+                        "Par": 3,
+                        "Length": 280
+                    },
+                    {
+                        "Hole": "H10",
+                        "Label": "10",
+                        "Par": 3,
+                        "Length": 266
+                    },
+                    {
+                        "Hole": "H11",
+                        "Label": "11",
+                        "Par": 3,
+                        "Length": 252
+                    },
+                    {
+                        "Hole": "H12",
+                        "Label": "12",
+                        "Par": 3,
+                        "Length": 301
+                    },
+                    {
+                        "Hole": "H13",
+                        "Label": "13",
+                        "Par": 4,
+                        "Length": 352
+                    },
+                    {
+                        "Hole": "H14",
+                        "Label": "14",
+                        "Par": 3,
+                        "Length": 344
+                    },
+                    {
+                        "Hole": "H15",
+                        "Label": "15",
+                        "Par": 4,
+                        "Length": 870
+                    },
+                    {
+                        "Hole": "H16",
+                        "Label": "16",
+                        "Par": 3,
+                        "Length": 286
+                    },
+                    {
+                        "Hole": "H17",
+                        "Label": "17",
+                        "Par": 3,
+                        "Length": 417
+                    },
+                    {
+                        "Hole": "H18",
+                        "Label": "18",
+                        "Par": 3,
+                        "Length": 225
+                    }
+                ]
+            },
+            {
+                "LayoutID": 763303,
+                "CourseID": 26852,
+                "CourseName": "Fields of Dreams",
+                "Name": "Long tee to Orange basket",
+                "Holes": 18,
+                "Par": 65,
+                "Length": 7627,
+                "Units": "Feet",
+                "Accuracy": "M",
+                "Details": [
+                    {
+                        "Hole": "H1",
+                        "Label": "1",
+                        "Par": 4,
+                        "Length": 492
+                    },
+                    {
+                        "Hole": "H2",
+                        "Label": "2",
+                        "Par": 4,
+                        "Length": 516
+                    },
+                    {
+                        "Hole": "H3",
+                        "Label": "3",
+                        "Par": 3,
+                        "Length": 285
+                    },
+                    {
+                        "Hole": "H4",
+                        "Label": "4",
+                        "Par": 3,
+                        "Length": 220
+                    },
+                    {
+                        "Hole": "H5",
+                        "Label": "5",
+                        "Par": 4,
+                        "Length": 412
+                    },
+                    {
+                        "Hole": "H6",
+                        "Label": "6",
+                        "Par": 4,
+                        "Length": 566
+                    },
+                    {
+                        "Hole": "H7",
+                        "Label": "7",
+                        "Par": 3,
+                        "Length": 285
+                    },
+                    {
+                        "Hole": "H8",
+                        "Label": "8",
+                        "Par": 3,
+                        "Length": 232
+                    },
+                    {
+                        "Hole": "H9",
+                        "Label": "9",
+                        "Par": 3,
+                        "Length": 230
+                    },
+                    {
+                        "Hole": "H10",
+                        "Label": "10",
+                        "Par": 3,
+                        "Length": 336
+                    },
+                    {
+                        "Hole": "H11",
+                        "Label": "11",
+                        "Par": 4,
+                        "Length": 322
+                    },
+                    {
+                        "Hole": "H12",
+                        "Label": "12",
+                        "Par": 3,
+                        "Length": 311
+                    },
+                    {
+                        "Hole": "H13",
+                        "Label": "13",
+                        "Par": 5,
+                        "Length": 519
+                    },
+                    {
+                        "Hole": "H14",
+                        "Label": "14",
+                        "Par": 3,
+                        "Length": 408
+                    },
+                    {
+                        "Hole": "H15",
+                        "Label": "15",
+                        "Par": 4,
+                        "Length": 560
+                    },
+                    {
+                        "Hole": "H16",
+                        "Label": "16",
+                        "Par": 5,
+                        "Length": 1000
+                    },
+                    {
+                        "Hole": "H17",
+                        "Label": "17",
+                        "Par": 3,
+                        "Length": 318
+                    },
+                    {
+                        "Hole": "H18",
+                        "Label": "18",
+                        "Par": 4,
+                        "Length": 615
+                    }
+                ]
+            },
+            {
+                "LayoutID": 764575,
+                "CourseID": 26852,
+                "CourseName": "Fields of Dreams",
+                "Name": "Long Tee to Yellow Basket",
+                "Holes": 18,
+                "Par": 62,
+                "Length": 6956,
+                "Units": "Feet",
+                "Accuracy": "M",
+                "Details": [
+                    {
+                        "Hole": "H1",
+                        "Label": "1",
+                        "Par": 4,
+                        "Length": 492
+                    },
+                    {
+                        "Hole": "H2",
+                        "Label": "2",
+                        "Par": 4,
+                        "Length": 458
+                    },
+                    {
+                        "Hole": "H3",
+                        "Label": "3",
+                        "Par": 3,
+                        "Length": 285
+                    },
+                    {
+                        "Hole": "H4",
+                        "Label": "4",
+                        "Par": 3,
+                        "Length": 232
+                    },
+                    {
+                        "Hole": "H5",
+                        "Label": "5",
+                        "Par": 4,
+                        "Length": 359
+                    },
+                    {
+                        "Hole": "H6",
+                        "Label": "6",
+                        "Par": 4,
+                        "Length": 564
+                    },
+                    {
+                        "Hole": "H7",
+                        "Label": "7",
+                        "Par": 4,
+                        "Length": 373
+                    },
+                    {
+                        "Hole": "H8",
+                        "Label": "8",
+                        "Par": 3,
+                        "Length": 255
+                    },
+                    {
+                        "Hole": "H9",
+                        "Label": "9",
+                        "Par": 3,
+                        "Length": 280
+                    },
+                    {
+                        "Hole": "H10",
+                        "Label": "10",
+                        "Par": 3,
+                        "Length": 266
+                    },
+                    {
+                        "Hole": "H11",
+                        "Label": "11",
+                        "Par": 3,
+                        "Length": 252
+                    },
+                    {
+                        "Hole": "H12",
+                        "Label": "12",
+                        "Par": 3,
+                        "Length": 301
+                    },
+                    {
+                        "Hole": "H13",
+                        "Label": "13",
+                        "Par": 4,
+                        "Length": 352
+                    },
+                    {
+                        "Hole": "H14",
+                        "Label": "14",
+                        "Par": 3,
+                        "Length": 344
+                    },
+                    {
+                        "Hole": "H15",
+                        "Label": "15",
+                        "Par": 4,
+                        "Length": 570
+                    },
+                    {
+                        "Hole": "H16",
+                        "Label": "16",
+                        "Par": 4,
+                        "Length": 870
+                    },
+                    {
+                        "Hole": "H17",
+                        "Label": "17",
+                        "Par": 3,
+                        "Length": 286
+                    },
+                    {
+                        "Hole": "H18",
+                        "Label": "18",
+                        "Par": 3,
+                        "Length": 417
+                    }
+                ]
+            }
+        ],
+        "Name": "FOD Club Championships - Sponsored by Jersey Discs",
+        "NameHtml": "FOD Club Championships - Sponsored by Jersey Discs",
+        "MultiLineName": {
+            "pre": "",
+            "main": "FOD Club Championships",
+            "post": "Sponsored by Jersey Discs"
+        },
+        "MultiLineNameHtml": " <span class=\"event-name-main\">FOD Club Championships</span> <span class=\"event-name-post\">Sponsored by Jersey Discs</span>",
+        "RawTier": "L",
+        "Rounds": 10,
+        "RoundsList": {
+            "1": {
+                "Number": 1,
+                "Label": "Week 1",
+                "LabelAbbreviated": "Wk 1",
+                "Date": "2026-05-21",
+                "DateAbbreviated": "May 21",
+                "ShowDate": true
+            },
+            "2": {
+                "Number": 2,
+                "Label": "Week 2",
+                "LabelAbbreviated": "Wk 2",
+                "Date": "2026-05-28",
+                "DateAbbreviated": "May 28",
+                "ShowDate": true
+            },
+            "3": {
+                "Number": 3,
+                "Label": "Week 3",
+                "LabelAbbreviated": "Wk 3",
+                "Date": "2026-06-04",
+                "DateAbbreviated": "Jun 4",
+                "ShowDate": true
+            },
+            "4": {
+                "Number": 4,
+                "Label": "Week 4",
+                "LabelAbbreviated": "Wk 4",
+                "Date": "2026-06-11",
+                "DateAbbreviated": "Jun 11",
+                "ShowDate": true
+            },
+            "5": {
+                "Number": 5,
+                "Label": "Week 5",
+                "LabelAbbreviated": "Wk 5",
+                "Date": "2026-06-18",
+                "DateAbbreviated": "Jun 18",
+                "ShowDate": true
+            },
+            "6": {
+                "Number": 6,
+                "Label": "Week 6",
+                "LabelAbbreviated": "Wk 6",
+                "Date": "2026-06-25",
+                "DateAbbreviated": "Jun 25",
+                "ShowDate": true
+            },
+            "7": {
+                "Number": 7,
+                "Label": "Week 7",
+                "LabelAbbreviated": "Wk 7",
+                "Date": "2026-07-02",
+                "DateAbbreviated": "Jul 2",
+                "ShowDate": true
+            },
+            "8": {
+                "Number": 8,
+                "Label": "Week 8",
+                "LabelAbbreviated": "Wk 8",
+                "Date": "2026-07-09",
+                "DateAbbreviated": "Jul 9",
+                "ShowDate": true
+            },
+            "9": {
+                "Number": 9,
+                "Label": "Week 9",
+                "LabelAbbreviated": "Wk 9",
+                "Date": "2026-07-16",
+                "DateAbbreviated": "Jul 16",
+                "ShowDate": true
+            },
+            "10": {
+                "Number": 10,
+                "Label": "Week 10",
+                "LabelAbbreviated": "Wk 10",
+                "Date": "2026-07-23",
+                "DateAbbreviated": "Jul 23",
+                "ShowDate": true
+            }
+        },
+        "Semis": "no",
+        "SimpleName": "FOD Club Championships",
+        "StartDate": "2026-05-21",
+        "TDName": "Jonathan Svendsen",
+        "TDPDGANum": 168110,
+        "Tier": "L",
+        "FormattedTier": "League",
+        "FormattedLongTier": "League",
+        "TierPro": "L",
+        "TierAm": "L",
+        "TierX": false,
+        "TotalPlayers": 0,
+        "TournamentId": "104527",
+        "International": false,
+        "FullStats": true,
+        "TimeZone": "America/New_York",
+        "AdditionalEventInfo": null,
+        "EventVideo": null,
+        "ScoringFormat": "S"
+    },
+    "hash": "db070371c2268ed606fa11610f3da550"
+}

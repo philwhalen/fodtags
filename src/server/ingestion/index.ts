@@ -8,5 +8,11 @@ import "server-only";
 export { runRefresh, __resetSingleFlightForTests } from "@server/ingestion/pipeline";
 export type { RunRefreshInput, RunRefreshSummary } from "@server/ingestion/pipeline";
 
+export { runRatingsRefresh } from "@server/ingestion/ratings-pipeline";
+export type {
+  RunRatingsRefreshInput,
+  RunRatingsRefreshSummary,
+} from "@server/ingestion/ratings-pipeline";
+
 export { getPdgaSource } from "@server/ingestion/pdga";
 export type { PdgaSource, RawEventPayload } from "@server/ingestion/pdga";

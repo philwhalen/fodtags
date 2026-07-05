@@ -3,8 +3,9 @@
 import "server-only";
 
 import { computeSeason } from "@server/engine";
+import { hasStaleSource } from "@server/db/repositories/eventSources";
+import { countPending } from "@server/db/repositories/playerMatches";
 import { listHolders } from "@server/db/repositories/tagHolders";
-import { listRuns } from "@server/db/repositories/refreshRuns";
 import { loadSeasonSnapshot } from "@server/db/repositories/seasonSnapshot";
 import type { Pool, SeasonStandingRow, SubLeagueType } from "@/lib";
 
@@ -75,19 +76,15 @@ function toStandingsRows(
 }
 
 /**
- * Whether the season's most recently COMPLETED refresh reported any failed
- * source (Spec 03 §3.8 "mark that source stale, show a per-view freshness
- * indicator"). This is the only staleness signal available before Common B
- * builds the real PDGA scraper — the stub source used today always
- * succeeds, so this evaluates to `false` in practice until then, but the
- * plumbing is real: a genuinely failed run will flip it.
+ * Per-view staleness from `event_sources.stale` (Spec 03 §3.8 / Spec 04
+ * §4.4). Championship views reflect any stale source; sub-league views
+ * reflect only that sub-league's source.
  */
-function isStale(seasonYear: number): boolean {
-  const [latest] = listRuns(seasonYear, 1);
-  if (!latest || latest.status === "running") return false;
-  if (latest.status === "failed") return true;
-  const counts = latest.counts as { failedCount?: number } | null;
-  return (counts?.failedCount ?? 0) > 0;
+function isViewStale(seasonYear: number, subLeagueType?: SubLeagueType): boolean {
+  if (subLeagueType) {
+    return hasStaleSource(seasonYear, [subLeagueType]);
+  }
+  return hasStaleSource(seasonYear);
 }
 
 /**
@@ -109,8 +106,7 @@ export function buildViews(seasonYear: number): ViewRow[] {
   const nameById = new Map(listHolders(seasonYear).map((h) => [h.id, h.name]));
 
   const updatedAt = new Date().toISOString();
-  const stale = isStale(seasonYear);
-  const pendingReview = 0;
+  const pendingReview = countPending(seasonYear);
 
   const views: ViewRow[] = [];
 
@@ -121,7 +117,7 @@ export function buildViews(seasonYear: number): ViewRow[] {
       payload: {
         rows: toStandingsRows(results.championship[pool], nameById),
         updatedAt,
-        stale,
+        stale: isViewStale(seasonYear),
         pendingReview,
       },
     });
@@ -136,7 +132,7 @@ export function buildViews(seasonYear: number): ViewRow[] {
         payload: {
           rows: toStandingsRows(results.subLeagues[type][pool], nameById),
           updatedAt,
-          stale,
+          stale: isViewStale(seasonYear, type),
           pendingReview,
           finalized,
         },

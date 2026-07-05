@@ -6,16 +6,15 @@ import { Cron } from "croner";
 import { config } from "@server/config";
 import { child } from "@server/logging";
 import { runRefresh } from "@server/ingestion";
+import { runRatingsRefresh } from "@server/ingestion/ratings-pipeline";
 
 /**
  * In-process, timezone-aware scheduler (CLAUDE.md "In-process
  * timezone-aware scheduler (croner)"; specs/12-Architecture.md §12.6).
  *
- * Both launch jobs below call the exact same `runRefresh()` pipeline that
- * the admin "Refresh now" button will call (sub-plan 08) — there is no
- * parallel scheduler-only code path, and no second lock here: `runRefresh`
- * already single-flights itself (sub-plan 06), so two near-simultaneous
- * fires (e.g. a manual refresh landing right as a scheduled one fires)
+ * Both launch jobs below call the shared ingestion pipelines — there is no
+ * parallel scheduler-only code path, and no second lock here: each pipeline
+ * single-flights itself (sub-plan 06/07), so two near-simultaneous fires
  * coalesce onto one run instead of racing.
  *
  * Season year is hardcoded to match the rest of the skeleton
@@ -23,6 +22,16 @@ import { runRefresh } from "@server/ingestion";
  * season" from the clock is out of scope until multi-season support lands.
  */
 const SEASON_YEAR = 2026;
+
+/** Invoked by the Thursday 21:00 ET cron job (exported for tests). */
+export function runThursdayScheduledRefresh(): void {
+  void runRefresh({ trigger: "scheduled", seasonYear: SEASON_YEAR });
+}
+
+/** Invoked by the monthly 2nd-Tuesday cron job (exported for tests). */
+export function runMonthlyRatingsScheduledRefresh(): void {
+  void runRatingsRefresh({ trigger: "scheduled", seasonYear: SEASON_YEAR });
+}
 
 /**
  * Module-level singleton guard. Next.js can invoke the boot `register()`
@@ -58,9 +67,7 @@ export function registerJobs(): void {
   const thursdayJob = new Cron(
     "0 21 * * 4",
     { timezone: config.APP_TIMEZONE, name: "thursday-full-refresh" },
-    () => {
-      void runRefresh({ trigger: "scheduled", seasonYear: SEASON_YEAR });
-    },
+    runThursdayScheduledRefresh,
   );
 
   // --- Job 2: monthly, 2nd-Tuesday ~09:00 ET ratings pull --------------
@@ -86,14 +93,12 @@ export function registerJobs(): void {
   // AND semantics (equivalently, the cron string could prefix the
   // day-of-week field with `+`, e.g. `"0 9 8-14 * +2"` — same effect).
   //
-  // Ratings-specific ingestion is deferred (CLAUDE.md, spec 03 §3.1); the
-  // skeleton reuses the same `runRefresh` pipeline here too.
+  // Monthly official-ratings pull (sub-plan 07) — distinct pipeline entry
+  // point sharing the same single-flight guard as the Thursday refresh.
   const monthlyRatingsJob = new Cron(
     "0 9 8-14 * 2",
     { timezone: config.APP_TIMEZONE, domAndDow: true, name: "monthly-2nd-tuesday-ratings" },
-    () => {
-      void runRefresh({ trigger: "scheduled", seasonYear: SEASON_YEAR });
-    },
+    runMonthlyRatingsScheduledRefresh,
   );
 
   for (const job of [thursdayJob, monthlyRatingsJob]) {

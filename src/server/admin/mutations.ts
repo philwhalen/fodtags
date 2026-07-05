@@ -11,10 +11,11 @@ import {
 import { recordAudit } from "@server/db/repositories/auditLog";
 import { getEntryCount, upsertEntryCount } from "@server/db/repositories/entryCounts";
 import { getEvent, updateEvent } from "@server/db/repositories/events";
-import { getResult, updateResult } from "@server/db/repositories/eventResults";
+import { getResult, updateResult, setHolderIdByPdgaNumber } from "@server/db/repositories/eventResults";
 import {
   getSource,
   insertSource,
+  setSourceStale,
   updateSource,
   type NewEventSourceInput,
 } from "@server/db/repositories/eventSources";
@@ -25,6 +26,7 @@ import {
   insertHolder,
   updateHolder,
 } from "@server/db/repositories/tagHolders";
+import { getMatch, upsertMatch } from "@server/db/repositories/playerMatches";
 import type { Pool } from "@server/db/schema";
 import { recompute } from "@server/readmodel/recompute";
 
@@ -275,6 +277,32 @@ export async function markSubLeagueComplete(
   return { publishedVersion };
 }
 
+/** Admin mark-stale / clear-stale (Spec 10 §10.7). */
+export async function setEventSourceStale(
+  sourceId: number,
+  stale: boolean,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  const before = getSource(sourceId);
+  if (!before) {
+    throw new AdminError("Event source not found.", "not_found");
+  }
+
+  setSourceStale(sourceId, stale);
+  const after = getSource(sourceId);
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: stale ? "mark_stale" : "clear_stale",
+    entityType: "event_source",
+    entityId: String(sourceId),
+    before,
+    after,
+  });
+  return { publishedVersion };
+}
+
 // --- Entry counts (Spec 10 §10.6) ---
 
 export async function setEntryCount(
@@ -350,6 +378,113 @@ export async function setTagNotPresent(
     action: tagPresent ? "tag_present" : "tag_not_present",
     entityType: "event_result",
     entityId: String(resultId),
+    before,
+    after,
+  });
+  return { publishedVersion };
+}
+
+// --- Player matching review queue (Spec 10 §10.4) ---
+
+export async function linkEntrant(
+  pdgaNumber: number,
+  holderId: number,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  const holder = getHolder(holderId);
+  if (!holder) {
+    throw new AdminError("Holder not found.", "not_found");
+  }
+
+  const before = getMatch(SEASON_YEAR, pdgaNumber) ?? null;
+  upsertMatch({
+    seasonYear: SEASON_YEAR,
+    pdgaNumber,
+    holderId,
+    source: "admin",
+    decidedBy: actorEmail,
+  });
+  setHolderIdByPdgaNumber(SEASON_YEAR, pdgaNumber, holderId);
+  const after = getMatch(SEASON_YEAR, pdgaNumber);
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "link",
+    entityType: "player_match",
+    entityId: String(pdgaNumber),
+    before,
+    after,
+  });
+  return { publishedVersion };
+}
+
+export interface CreateHolderForEntrantInput extends CreateHolderInput {
+  pdgaNumber: number;
+}
+
+export async function createHolderForEntrant(
+  input: CreateHolderForEntrantInput,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  if (!input.name.trim()) {
+    throw new AdminError("Name is required.");
+  }
+  assertUniqueTag(SEASON_YEAR, input.tagNumber);
+
+  const id = insertHolder({ seasonYear: SEASON_YEAR, ...input, pdgaNumber: input.pdgaNumber });
+  const holder = getHolder(id);
+
+  upsertMatch({
+    seasonYear: SEASON_YEAR,
+    pdgaNumber: input.pdgaNumber,
+    holderId: id,
+    source: "admin",
+    decidedBy: actorEmail,
+  });
+  setHolderIdByPdgaNumber(SEASON_YEAR, input.pdgaNumber, id);
+  const match = getMatch(SEASON_YEAR, input.pdgaNumber);
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "create_and_link",
+    entityType: "player_match",
+    entityId: String(input.pdgaNumber),
+    after: { holder, match },
+  });
+
+  return {
+    publishedVersion,
+    warning: poolBHighRatingWarning(input.pool, input.ratingAtEntry),
+  };
+}
+
+export async function markNonHolder(
+  pdgaNumber: number,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+
+  const before = getMatch(SEASON_YEAR, pdgaNumber) ?? null;
+  upsertMatch({
+    seasonYear: SEASON_YEAR,
+    pdgaNumber,
+    holderId: null,
+    source: "admin",
+    decidedBy: actorEmail,
+  });
+  setHolderIdByPdgaNumber(SEASON_YEAR, pdgaNumber, null);
+  const after = getMatch(SEASON_YEAR, pdgaNumber);
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "mark_non_holder",
+    entityType: "player_match",
+    entityId: String(pdgaNumber),
     before,
     after,
   });

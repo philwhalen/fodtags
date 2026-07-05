@@ -6,6 +6,7 @@
 import type { Pool } from "./pool";
 
 export type { Pool } from "./pool";
+export { normalizeName } from "./normalize-name";
 
 // The `computeSeason` engine's input/output contract (Spec 02;
 // plans/common-a/02-engine-scoring.md) — kept here rather than imported

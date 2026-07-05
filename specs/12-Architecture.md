@@ -156,7 +156,7 @@ interface PdgaSource {
 }
 ```
 
-- Real implementation: HTTP with realistic `User-Agent`/`Accept`/`Referer`, polite rate limiting and backoff; **Playwright headless fallback** when headers alone still 403. The exact 403-avoiding request signature is a known implementation spike ([Spec 03 §3.1](./03-Data-Ingestion-and-PDGA.md#31-known-constraint-pdga-blocks-naive-clients-and-has-no-open-api)) and is **not** solved in the scaffold.
+- Real implementation (delivered in **Common Work B**): HTTP with realistic `User-Agent`/`Accept`/`Referer`, polite rate limiting and backoff **and** the **Playwright headless fallback** for when headers alone still 403 — both ship in B so 403-resilience is real at launch. The exact 403-avoiding request signature is a known implementation spike ([Spec 03 §3.1](./03-Data-Ingestion-and-PDGA.md#31-known-constraint-pdga-blocks-naive-clients-and-has-no-open-api)), de-risked by first recording live payloads, then developing normalize/match against those saved fixtures. Selected at runtime via a `PDGA_SOURCE` env flag (`stub` | `live`), so the stub source stays available for tests and local dev.
 - Skeleton implementation: a stub returning an empty payload, so the pipeline runs end-to-end and records a run without contacting PDGA.
 - All of this is server-only; the client bundle never imports it.
 
@@ -228,6 +228,6 @@ Single Zod-validated `config` module, loaded at boot; the process refuses to sta
 
 ## 12.14 Explicitly deferred
 
-Real PDGA scraping / the 403 signature; the full domain schema and scoring engine; all four feature views; player profiles; the financial engine and ledger; the full admin surface (matching queue, overrides, financial inputs); preview-before-publish; multi-season data; alerting. Each arrives with its owning feature spec, on top of this scaffold.
+_As of the scaffold, all of the below were deferred. **Common Work A** has since delivered the full domain schema and scoring engine; **Common Work B** delivers real PDGA scraping / the 403 signature, the matching queue, and the monthly official-ratings pull._ Still deferred: all four feature views; player profiles; the financial engine and ledger; the remaining admin surface (overrides, financial inputs); preview-before-publish; multi-season data; alerting. Each arrives with its owning feature spec, on top of this scaffold.
 
 ← Prev: [11 — UX & Non-Functional](./11-UX-and-Nonfunctional.md) · [Master Spec](./00-Master-Spec.md)

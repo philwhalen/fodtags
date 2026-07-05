@@ -70,3 +70,32 @@ export type EventSourcePatch = Partial<Omit<NewEventSourceInput, "seasonYear">>;
 export function updateSource(id: number, patch: EventSourcePatch): void {
   db.update(eventSources).set(patch).where(eq(eventSources.id, id)).run();
 }
+
+/** Mark a source stale after a transient fetch failure (Spec 03 §3.8). */
+export function markSourceStale(id: number): void {
+  db.update(eventSources).set({ stale: true }).where(eq(eventSources.id, id)).run();
+}
+
+/** Clear stale and record freshness after a successful persist. */
+export function markSourceGood(id: number): void {
+  db.update(eventSources)
+    .set({ stale: false, lastGoodAt: new Date().toISOString() })
+    .where(eq(eventSources.id, id))
+    .run();
+}
+
+/** Admin mark-stale / clear-stale (Spec 10 §10.7). */
+export function setSourceStale(id: number, stale: boolean): void {
+  if (stale) {
+    markSourceStale(id);
+    return;
+  }
+  db.update(eventSources).set({ stale: false }).where(eq(eventSources.id, id)).run();
+}
+
+/** Whether any source (optionally filtered by type) is flagged stale. */
+export function hasStaleSource(seasonYear: number, types?: EventSourceType[]): boolean {
+  const sources = listSources(seasonYear);
+  const scoped = types ? sources.filter((s) => types.includes(s.type)) : sources;
+  return scoped.some((s) => s.stale);
+}

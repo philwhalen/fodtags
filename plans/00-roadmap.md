@@ -40,7 +40,9 @@ the product views.
 
 ## Sequence
 
-### Common Work A — Domain foundation & engine
+### Common Work A — Domain foundation & engine ✅ complete
+_Accepted and archived: [`plans/completed/common-a-00-master.md`](./completed/common-a-00-master.md) (token/cost accounting intact). Committed as `b3fbe29`._
+
 The full domain data model, the real computation, and the shared UI shell every view sits in.
 - Full domain schema + normalized-store repositories (rounds, results, ratings history,
   player↔holder matches, adjustments/overrides, **audit log**).
@@ -53,7 +55,9 @@ The full domain data model, the real computation, and the shared UI shell every 
 - Thin admin data-entry: roster (tags/pools/PDGA#/entry dates), event-source registration,
   and **per-night entry counts → OLP pot balance** (the minimal money slice for Feature 3 payouts).
 
-### Common Work B — Real PDGA ingestion
+### Common Work B — Real PDGA ingestion ✅ complete
+_Accepted and archived: [`plans/completed/common-b-00-master.md`](./completed/common-b-00-master.md) (token/cost accounting intact)._
+
 The biggest technical risk, proven before the feature views so they render real data.
 - **Real PDGA scraper** ([spec 03](../specs/03-Data-Ingestion-and-PDGA.md)): the
   403-avoiding fetch (HTTP-with-headers → Playwright fallback), normalize, monthly
@@ -94,5 +98,9 @@ Aggregates all five prior views → built last.
 
 ## Next planning pass
 
-Take Common Work A into the full spec-driven workflow: confirm/expand the relevant specs,
-then produce `plans/common-a/00-master.md` + sub-plans at implementation granularity.
+Take **Common Work B — Real PDGA ingestion** into the full spec-driven workflow: confirm/expand
+the relevant specs ([03 Ingestion](../specs/03-Data-Ingestion-and-PDGA.md), plus the matching
+review queue in [10 Admin](../specs/10-Admin-Console.md)), then produce `plans/common-b/00-master.md`
++ sub-plans at implementation granularity.
+
+_Common Work A completed — see the ✅ marker above._

@@ -7,13 +7,22 @@ import path from "node:path";
 
 import { config } from "@server/config";
 import { child } from "@server/logging";
-import { listActiveSources } from "@server/db/repositories/eventSources";
+import {
+  listActiveSources,
+  markSourceGood,
+  markSourceStale,
+} from "@server/db/repositories/eventSources";
+import { PdgaShapeError } from "@server/ingestion/pdga/schema";
+import { getStickyMatches, upsertMatch } from "@server/db/repositories/playerMatches";
 import { listHolders } from "@server/db/repositories/tagHolders";
 import { startRun, finishRun } from "@server/db/repositories/refreshRuns";
 import { recompute } from "@server/readmodel";
+import type { EventSourceCategory } from "@/lib";
 import { getPdgaSource } from "@server/ingestion/pdga";
+import { withSingleFlight, __resetSingleFlightForTests } from "@server/ingestion/single-flight";
 import { normalize } from "@server/ingestion/normalize";
 import { match, type MatchableHolder } from "@server/ingestion/match";
+import { persistEvent } from "@server/ingestion/persist";
 import type { RefreshTrigger } from "@server/db/schema";
 
 export interface RunRefreshInput {
@@ -28,6 +37,7 @@ interface PerSourceOutcome {
   entrantsFetched: number;
   matched: number;
   unmatched: number;
+  roundsPersisted: number;
   rawFile?: string;
   error?: string;
 }
@@ -45,25 +55,8 @@ export interface RunRefreshSummary {
   error?: string | null;
 }
 
-/**
- * Single-flight guard (CLAUDE.md "Manual 'Refresh now' and the scheduled
- * refresh call the SAME pipeline function with a single-flight guard";
- * specs/12-Architecture.md §12.6). A module-level in-flight promise — not a
- * plain boolean — so a second caller that arrives while a run is active
- * doesn't just get told "no", it gets the SAME result the first caller will
- * get, once the in-flight run finishes. This is what makes
- * `Promise.all([runRefresh(...), runRefresh(...)])` produce exactly one
- * `refresh_runs` row: both promises resolve to the one run's summary.
- *
- * Exported so a test harness (sub-plan 10) can assert on/reset it between
- * cases without reaching into module internals via casts.
- */
-let inFlight: Promise<RunRefreshSummary> | null = null;
-
-/** Test-only escape hatch: forces the guard back to idle between test cases. */
-export function __resetSingleFlightForTests(): void {
-  inFlight = null;
-}
+/** Re-exported for tests — see `@server/ingestion/single-flight`. */
+export { __resetSingleFlightForTests };
 
 /**
  * The one pipeline function both "Refresh now" (sub-plan 08) and the
@@ -84,25 +77,10 @@ export function __resetSingleFlightForTests(): void {
  * still lands a terminal row instead of leaving it stuck at `running`.
  */
 export function runRefresh(input: RunRefreshInput): Promise<RunRefreshSummary> {
-  if (inFlight) {
-    const log = child({ job: "refresh" });
-    log.info(
-      { event: "refresh.skipped", trigger: input.trigger, seasonYear: input.seasonYear },
-      "refresh already in flight — coalescing onto it",
-    );
-    return inFlight.then((result) => ({ ...result, outcome: "skipped" as const }));
-  }
-
-  const run = executeRefresh(input);
-  inFlight = run;
-
-  // Clear the guard once this run settles (success or throw) so the NEXT
-  // call starts a fresh run rather than coalescing forever.
-  run.finally(() => {
-    inFlight = null;
+  return withSingleFlight("refresh", () => executeRefresh(input), {
+    trigger: input.trigger,
+    seasonYear: input.seasonYear,
   });
-
-  return run;
 }
 
 async function executeRefresh(input: RunRefreshInput): Promise<RunRefreshSummary> {
@@ -121,6 +99,7 @@ async function executeRefresh(input: RunRefreshInput): Promise<RunRefreshSummary
       name: h.name,
       pdgaNumber: h.pdgaNumber,
     }));
+    const stickyMap = getStickyMatches(seasonYear);
 
     for (const source of activeSources) {
       // Isolation (Spec 03 §3.8): one source's failure must not abort the
@@ -130,22 +109,47 @@ async function executeRefresh(input: RunRefreshInput): Promise<RunRefreshSummary
       try {
         const pdgaSource = getPdgaSource();
         const payload = await pdgaSource.fetchEvent(source.pdgaEventId);
-        const normalized = normalize(payload);
+        const normalized = normalize(payload, source.type as EventSourceCategory);
 
         const rawFile = cacheRawPayload(seasonYear, source.pdgaEventId, payload);
 
-        const matchResult = match(normalized, holders);
+        const entrants = normalized.rounds.flatMap((round) => round.entrants);
+        const matchResult = match(entrants, holders, stickyMap);
+        const roundsPersisted = persistEvent(seasonYear, source, normalized, matchResult);
+
+        for (const link of matchResult.autoLinks) {
+          upsertMatch({
+            seasonYear,
+            pdgaNumber: link.pdgaNumber,
+            holderId: link.holderId,
+            source: "auto",
+            decidedBy: "auto",
+          });
+        }
+
+        const entrantsFetched = entrants.length;
+
+        markSourceGood(source.id);
 
         sources.push({
           pdgaEventId: source.pdgaEventId,
           type: source.type,
           status: "ok",
-          entrantsFetched: normalized.entrants.length,
+          entrantsFetched,
           matched: matchResult.matched.length,
           unmatched: matchResult.unmatched.length,
+          roundsPersisted,
           rawFile,
         });
       } catch (err) {
+        // Shape change = PDGA API contract drift — fail the whole run loudly
+        // so we never publish garbage (sub-plan 02 / Spec 03 §3.8).
+        if (err instanceof PdgaShapeError) {
+          throw err;
+        }
+
+        markSourceStale(source.id);
+
         const message = err instanceof Error ? err.message : String(err);
         log.error(
           { event: "refresh.source_failed", pdgaEventId: source.pdgaEventId, error: message },
@@ -158,6 +162,7 @@ async function executeRefresh(input: RunRefreshInput): Promise<RunRefreshSummary
           entrantsFetched: 0,
           matched: 0,
           unmatched: 0,
+          roundsPersisted: 0,
           error: message,
         });
       }

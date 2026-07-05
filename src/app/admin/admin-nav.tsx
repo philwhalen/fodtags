@@ -2,11 +2,15 @@ import type { Route } from "next";
 import Link from "next/link";
 
 import { SEASON_YEAR } from "@server/admin/context";
+import { countPending } from "@server/db/repositories/playerMatches";
 
-export function AdminNav() {
+export async function AdminNav() {
+  const pendingCount = countPending(SEASON_YEAR);
+
   const links = [
     { href: "/admin", label: "Dashboard" },
     { href: "/admin/roster", label: "Roster" },
+    { href: "/admin/matches", label: `Matches (${pendingCount})` },
     { href: "/admin/events", label: "Event sources" },
     { href: "/admin/entry-counts", label: "Entry counts" },
     { href: "/admin/adjustments", label: "Adjustments" },

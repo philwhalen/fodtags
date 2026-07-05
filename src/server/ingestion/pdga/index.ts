@@ -2,24 +2,46 @@
 // specs/12-Architecture.md §12.1 / §12.7.
 import "server-only";
 
+import { config } from "@server/config";
+import { fixtureSource } from "@server/ingestion/pdga/fixture-source";
+import { liveSource } from "@server/ingestion/pdga/live-source";
 import type { PdgaSource } from "@server/ingestion/pdga/source";
 import { stubSource } from "@server/ingestion/pdga/stub-source";
 
-export type { PdgaFetchOptions, PdgaSource, RawEventPayload } from "@server/ingestion/pdga/source";
+export type {
+  LiveApiEnvelope,
+  LiveApiEventBody,
+  LiveApiRoundBody,
+  PdgaFetchOptions,
+  PdgaSource,
+  RawDivision,
+  RawEventMeta,
+  RawEventPayload,
+  RawRound,
+  RawScoreEntry,
+} from "@server/ingestion/pdga/source";
+
+let pdgaSourceOverride: PdgaSource | null = null;
+
+/** Test-only hook — inject a custom source (e.g. throw on fetch). */
+export function __setPdgaSourceForTests(source: PdgaSource | null): void {
+  pdgaSourceOverride = source;
+}
 
 /**
  * Factory selecting which `PdgaSource` implementation the pipeline uses.
- * Always returns the stub today. Structured so a later real implementation
- * (specs/12-Architecture.md §12.7, deferred per §12.14) can be swapped in
- * behind an env flag without touching `pipeline.ts` — e.g.:
- *
- * ```ts
- * return process.env.PDGA_SOURCE === "live" ? liveSource : stubSource;
- * ```
- *
- * That flag isn't added to `src/server/config` yet because there is nothing
- * for it to select besides the stub; add it alongside the real fetcher.
+ * Controlled by `PDGA_SOURCE` (`stub` default | `live` | `fixture`).
  */
 export function getPdgaSource(): PdgaSource {
-  return stubSource;
+  if (pdgaSourceOverride) {
+    return pdgaSourceOverride;
+  }
+  switch (config.pdgaSource) {
+    case "live":
+      return liveSource;
+    case "fixture":
+      return fixtureSource;
+    default:
+      return stubSource;
+  }
 }

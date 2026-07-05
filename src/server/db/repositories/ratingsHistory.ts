@@ -26,6 +26,13 @@ export interface NewRatingHistoryInput {
 
 /** Upserts on `(holderId, effectiveDate, official)` so re-ingesting the
  * same monthly pull corrects rather than duplicates. */
+/** Upserts an official monthly PDGA rating (`official=true`). */
+export function upsertOfficialRating(
+  input: Omit<NewRatingHistoryInput, "official">,
+): void {
+  insertRating({ ...input, official: true });
+}
+
 export function insertRating(input: NewRatingHistoryInput): void {
   const official = input.official ?? true;
   db.insert(ratingsHistory)

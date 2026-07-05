@@ -77,6 +77,11 @@ export const eventSources = sqliteTable(
     pdgaEventId: text("pdga_event_id").notNull(),
     type: text("type", { enum: eventSourceTypeEnum }).notNull(),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
+    /** Set when a refresh fails to fetch/parse this source (Spec 03 §3.8);
+     * cleared on the next successful persist or by admin action. */
+    stale: integer("stale", { mode: "boolean" }).notNull().default(false),
+    /** UTC ISO-8601 timestamp of the last successful persist for this source. */
+    lastGoodAt: text("last_good_at"),
     label: text("label").notNull(),
     /** Sub-league only (Early/Mid/Late): admin-configured window start (ET,
      * `YYYY-MM-DD`) — drives current-sub-league selection (Spec 03 §3.4).
@@ -199,12 +204,13 @@ export const playerMatches = sqliteTable(
       .notNull()
       .references(() => seasons.year),
     pdgaNumber: integer("pdga_number").notNull(),
-    holderId: integer("holder_id")
-      .notNull()
-      .references(() => tagHolders.id),
-    /** Director email, or null for an unconfirmed auto-match. */
-    confirmedBy: text("confirmed_by"),
-    confirmedAt: text("confirmed_at").notNull(),
+    /** Null = confirmed non-holder (excluded from points, never re-queued). */
+    holderId: integer("holder_id").references(() => tagHolders.id),
+    /** How this decision was made — admin always wins over auto on upsert. */
+    source: text("source", { enum: ["auto", "admin"] }).notNull(),
+    /** Director email for admin decisions; `"auto"` for auto-links. */
+    decidedBy: text("decided_by").notNull(),
+    decidedAt: text("decided_at").notNull(),
   },
   (table) => [
     uniqueIndex("player_matches_season_pdga_number_idx").on(table.seasonYear, table.pdgaNumber),

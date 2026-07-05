@@ -2,7 +2,8 @@
 // specs/12-Architecture.md §12.1 / §12.3.
 import "server-only";
 
-import type { NormalizedEntrantResult, NormalizedEventResult } from "@server/ingestion/normalize";
+import { normalizeName } from "@/lib/normalize-name";
+import type { NormalizedEntrantResult } from "@server/ingestion/normalize";
 
 /** A normalized entrant successfully resolved to a tag holder. */
 export interface MatchedEntrant {
@@ -20,9 +21,15 @@ export interface UnmatchedEntrant {
   reason: "no-pdga-number-match" | "no-name-match" | "ambiguous";
 }
 
+export interface AutoLink {
+  pdgaNumber: number;
+  holderId: number;
+}
+
 export interface MatchResult {
   matched: MatchedEntrant[];
   unmatched: UnmatchedEntrant[];
+  autoLinks: AutoLink[];
 }
 
 /** Minimal shape of a tag holder needed for matching. */
@@ -32,35 +39,75 @@ export interface MatchableHolder {
   pdgaNumber: number | null;
 }
 
+/** Sticky decision from `player_matches` keyed by PDGA number. */
+export interface StickyMatch {
+  holderId: number | null;
+  source: "auto" | "admin";
+}
+
 /**
- * Resolve a normalized event's entrants to tag holders (Spec 03 §3.5
- * "Admin maps, app assists"):
+ * Resolve entrants to tag holders (Spec 03 §3.5). Pure given inputs — no DB.
  *
- * 1. Auto-match by **PDGA number** first, then normalized name.
- * 2. Confident matches apply automatically.
- * 3. Anything ambiguous/unmatched goes to the admin review queue — this
- *    function never silently guesses.
- * 4. Matches should be **sticky** once an admin confirms them (persisted
- *    across refreshes) — that persistence layer doesn't exist yet.
- *
- * TODO (deferred to the matching feature work, Spec 10): this skeleton has
- * no entrants to match (the stub source always returns `[]`), so there is
- * no PDGA#/name matching logic, no confidence scoring, and no persisted
- * review queue yet. When real entrants arrive, implement here:
- *   - exact PDGA# lookup against `tagHolders.pdgaNumber`,
- *   - normalized-name fallback (case/whitespace/punctuation-insensitive),
- *   - ambiguous-match detection (e.g. two holders sharing a normalized name),
- *   - persisting confirmed `PDGA# -> holder` mappings so they're sticky,
- *   - writing unresolved entrants to an admin review queue table.
+ * 1. Sticky first — linked holder or confirmed non-holder; never re-queue.
+ * 2. Exact PDGA# — link even if names differ; emit autoLink.
+ * 3. Unique normalized name (no PDGA# hit) — link; emit autoLink.
+ * 4. Else — unmatched (zero name matches) or ambiguous (two or more).
  */
-export function match(normalized: NormalizedEventResult, holders: MatchableHolder[]): MatchResult {
-  // `normalized.entrants` is always `[]` while only the stub source exists
-  // (see normalize.ts) — nothing to match yet, against any of `holders`.
-  // See the TODO above for what belongs here once real entrants arrive.
-  void normalized;
-  void holders;
-  return {
-    matched: [],
-    unmatched: [],
-  };
+export function match(
+  entrants: NormalizedEntrantResult[],
+  holders: MatchableHolder[],
+  stickyMap: Map<number, StickyMatch>,
+): MatchResult {
+  const matched: MatchedEntrant[] = [];
+  const unmatched: UnmatchedEntrant[] = [];
+  const autoLinks: AutoLink[] = [];
+
+  for (const entrant of entrants) {
+    const sticky = entrant.pdgaNumber !== null ? stickyMap.get(entrant.pdgaNumber) : undefined;
+
+    if (sticky !== undefined) {
+      if (sticky.holderId !== null) {
+        matched.push({ holderId: sticky.holderId, entrant });
+      }
+      continue;
+    }
+
+    const pdgaHit =
+      entrant.pdgaNumber !== null
+        ? holders.find((h) => h.pdgaNumber === entrant.pdgaNumber)
+        : undefined;
+
+    if (pdgaHit) {
+      matched.push({ holderId: pdgaHit.id, entrant });
+      if (entrant.pdgaNumber !== null) {
+        autoLinks.push({ pdgaNumber: entrant.pdgaNumber, holderId: pdgaHit.id });
+      }
+      continue;
+    }
+
+    const normalizedEntrantName = normalizeName(entrant.displayName);
+    const nameHits = holders.filter((h) => normalizeName(h.name) === normalizedEntrantName);
+
+    if (nameHits.length === 1) {
+      const holder = nameHits[0]!;
+      matched.push({ holderId: holder.id, entrant });
+      if (entrant.pdgaNumber !== null) {
+        autoLinks.push({ pdgaNumber: entrant.pdgaNumber, holderId: holder.id });
+      }
+      continue;
+    }
+
+    if (nameHits.length >= 2) {
+      unmatched.push({ entrant, reason: "ambiguous" });
+      continue;
+    }
+
+    if (entrant.pdgaNumber !== null) {
+      unmatched.push({ entrant, reason: "no-name-match" });
+    } else {
+      unmatched.push({ entrant, reason: "no-pdga-number-match" });
+    }
+  }
+
+  return { matched, unmatched, autoLinks };
 }

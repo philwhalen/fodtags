@@ -3,6 +3,7 @@ import { getCurrentVersion } from "@server/db/repositories/readModel";
 import { listRuns } from "@server/db/repositories/refreshRuns";
 
 import { AdminNav } from "./admin-nav";
+import { RatingsRefreshButton } from "./ratings-refresh-button";
 import { RefreshButton } from "./refresh-button";
 
 const SEASON_YEAR = 2026;
@@ -47,6 +48,7 @@ export default async function AdminPage() {
 
       <h2>Ingestion</h2>
       <RefreshButton />
+      <RatingsRefreshButton />
 
       <h2>Recent refresh runs</h2>
       {runs.length === 0 ? (

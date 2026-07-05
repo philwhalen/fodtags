@@ -11,16 +11,63 @@ import "server-only";
  * layers needs to know which implementation is live.
  */
 
+/** Event-level metadata from `live_results_fetch_event` (Spec 03 / master plan). */
+export interface RawEventMeta {
+  HighestCompletedRound: number;
+  FinalRound: number;
+  EndDate: string;
+  DateRange: string;
+  StartDate: string;
+}
+
+/** One division row from `data.Divisions[]`. */
+export interface RawDivision {
+  DivisionID: number;
+  Division: string;
+  LatestRound: number;
+}
+
 /**
- * Raw, unnormalized payload for a single PDGA event fetch. `entrants` is
- * intentionally untyped beyond "empty" in the skeleton — the real shape
- * (player name, PDGA#, per-round score/rating, round status — Spec 03 §3.2)
- * arrives with the real fetcher (deferred, §12.14).
+ * One entrant row from `data.scores[]` — field names kept verbatim from the
+ * live-api so `normalize` (sub-plan 03) owns the mapping to DB columns.
+ */
+export interface RawScoreEntry {
+  PDGANum: number | null;
+  HasPDGANum: number;
+  Name: string;
+  FirstName: string;
+  LastName: string;
+  RoundtoPar: number;
+  ToPar: number;
+  RoundRating: number | null;
+  Rating: number | null;
+  Completed: number;
+  HasRoundScore: number;
+  Round: number;
+  RunningPlace: number | null;
+  Tied: boolean;
+  WonPlayoff: string;
+  ProfileURL: string;
+  Rounds: string;
+  Division: string;
+}
+
+/** Per-round scores for one division. */
+export interface RawRound {
+  Division: string;
+  Round: number;
+  scores: RawScoreEntry[];
+}
+
+/**
+ * Raw, unnormalized payload for a single PDGA event fetch — the shape both
+ * `liveSource` and `fixtureSource` assemble from the live-api responses.
  */
 export interface RawEventPayload {
   pdgaEventId: string;
-  /** Stub: always empty. Real payloads will carry per-round entrant data. */
-  entrants: [];
+  meta: RawEventMeta;
+  divisions: RawDivision[];
+  rounds: RawRound[];
 }
 
 /** Options for a fetch — reserved for divisions/round filters etc. later. */
@@ -28,4 +75,29 @@ export type PdgaFetchOptions = unknown;
 
 export interface PdgaSource {
   fetchEvent(eventId: string, opts?: PdgaFetchOptions): Promise<RawEventPayload>;
+}
+
+/** Envelope wrapping every live-api JSON response (`{ data, hash }`). */
+export interface LiveApiEnvelope<T> {
+  data: T;
+  hash: string;
+}
+
+/** `data` object from `live_results_fetch_event`. */
+export interface LiveApiEventBody {
+  Divisions: Array<{
+    DivisionID: number;
+    Division: string;
+    LatestRound: number;
+  }>;
+  HighestCompletedRound: number;
+  FinalRound: number;
+  EndDate: string;
+  DateRange: string;
+  StartDate: string;
+}
+
+/** `data` object from `live_results_fetch_round`. */
+export interface LiveApiRoundBody {
+  scores: RawScoreEntry[];
 }

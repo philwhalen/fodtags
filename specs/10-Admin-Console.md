@@ -28,9 +28,9 @@ The private, authenticated area where league directors supply the data PDGA can'
 
 ## 10.4 Player matching review queue
 
-- Surfaces PDGA entrants that didn't confidently auto-match to a holder ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching-admin-maps-app-assists)).
+- Surfaces PDGA entrants that didn't confidently auto-match to a holder ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching-admin-maps-app-assists)). Exact-PDGA-number and unique-normalized-name entrants auto-link and never appear here; only **unmatched** (zero name matches) and **ambiguous** (two or more) entrants queue.
 - Admin actions: **link** to an existing holder, **create** a holder, or **mark as non-holder** (excluded from points).
-- Confirmed links are sticky across future refreshes.
+- **All three resolutions are sticky** across future refreshes (keyed by PDGA number) — including "non-holder", so an ignored entrant doesn't re-queue every week.
 - A count of pending matches is visible and feeds the public data-quality banners.
 
 ## 10.5 Manual adjustments & overrides

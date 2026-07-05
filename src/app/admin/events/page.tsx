@@ -31,6 +31,7 @@ export default async function AdminEventsPage() {
             <th>End</th>
             <th>Complete</th>
             <th>Active</th>
+            <th>Stale</th>
             <th>Actions</th>
           </tr>
         </thead>

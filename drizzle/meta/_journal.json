@@ -15,6 +15,20 @@
       "when": 1783186927717,
       "tag": "0001_lean_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783190000000,
+      "tag": "0002_player_matches_sticky",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1783208410894,
+      "tag": "0003_cool_sprite",
+      "breakpoints": true
     }
   ]
 }

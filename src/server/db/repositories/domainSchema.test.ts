@@ -26,6 +26,7 @@ let insertResult: typeof import("@server/db/repositories/eventResults").insertRe
 let listResultsByEvent: typeof import("@server/db/repositories/eventResults").listResultsByEvent;
 let upsertMatch: typeof import("@server/db/repositories/playerMatches").upsertMatch;
 let getMatch: typeof import("@server/db/repositories/playerMatches").getMatch;
+let getStickyMatches: typeof import("@server/db/repositories/playerMatches").getStickyMatches;
 let insertRating: typeof import("@server/db/repositories/ratingsHistory").insertRating;
 let listRatingsByHolder: typeof import("@server/db/repositories/ratingsHistory").listRatingsByHolder;
 let insertSwitch: typeof import("@server/db/repositories/poolSwitches").insertSwitch;
@@ -79,6 +80,7 @@ beforeAll(async () => {
   listResultsByEvent = eventResultsRepo.listResultsByEvent;
   upsertMatch = playerMatchesRepo.upsertMatch;
   getMatch = playerMatchesRepo.getMatch;
+  getStickyMatches = playerMatchesRepo.getStickyMatches;
   insertRating = ratingsHistoryRepo.insertRating;
   listRatingsByHolder = ratingsHistoryRepo.listRatingsByHolder;
   insertSwitch = poolSwitchesRepo.insertSwitch;
@@ -153,17 +155,71 @@ describe("domain schema repositories: insert -> season-scoped read round-trip", 
       entryDate: "2026-03-01T00:00:00.000Z",
     });
 
-    upsertMatch({ seasonYear: SEASON_YEAR, pdgaNumber: 888888, holderId, confirmedBy: null });
     upsertMatch({
       seasonYear: SEASON_YEAR,
       pdgaNumber: 888888,
       holderId,
-      confirmedBy: "director@example.com",
+      source: "auto",
+      decidedBy: "auto",
+    });
+    upsertMatch({
+      seasonYear: SEASON_YEAR,
+      pdgaNumber: 888888,
+      holderId,
+      source: "admin",
+      decidedBy: "director@example.com",
     });
 
     const match = getMatch(SEASON_YEAR, 888888);
     expect(match?.holderId).toBe(holderId);
-    expect(match?.confirmedBy).toBe("director@example.com");
+    expect(match?.source).toBe("admin");
+    expect(match?.decidedBy).toBe("director@example.com");
+  });
+
+  it("player_matches round-trips confirmed non-holder and sticky map", () => {
+    upsertMatch({
+      seasonYear: SEASON_YEAR,
+      pdgaNumber: 777777,
+      holderId: null,
+      source: "admin",
+      decidedBy: "director@example.com",
+    });
+
+    const row = getMatch(SEASON_YEAR, 777777);
+    expect(row?.holderId).toBeNull();
+    expect(row?.source).toBe("admin");
+
+    const sticky = getStickyMatches(SEASON_YEAR);
+    expect(sticky.get(777777)).toEqual({ holderId: null, source: "admin" });
+  });
+
+  it("player_matches auto upsert does not override admin", () => {
+    const holderId = insertHolder({
+      seasonYear: SEASON_YEAR,
+      name: "Auto Override Test",
+      tagNumber: 995,
+      pool: "A",
+      entryDate: "2026-03-01T00:00:00.000Z",
+    });
+
+    upsertMatch({
+      seasonYear: SEASON_YEAR,
+      pdgaNumber: 666666,
+      holderId,
+      source: "admin",
+      decidedBy: "director@example.com",
+    });
+    upsertMatch({
+      seasonYear: SEASON_YEAR,
+      pdgaNumber: 666666,
+      holderId: holderId + 999,
+      source: "auto",
+      decidedBy: "auto",
+    });
+
+    const row = getMatch(SEASON_YEAR, 666666);
+    expect(row?.holderId).toBe(holderId);
+    expect(row?.source).toBe("admin");
   });
 
   it("ratings_history round-trips per holder", () => {

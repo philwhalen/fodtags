@@ -10,7 +10,7 @@ Define how raw round data gets from PDGA Live into the app, how PDGA entrants ar
 
 - **No official API at launch.** The PDGA REST API developer program is **closed** (targeting a reopen in early 2026), so there is no supported programmatic feed. Ingestion targets the **PDGA Live pages / undocumented `live-api`**.
 - **Bot protection.** Both the Live pages and the `live-api` JSON endpoints returned **HTTP 403** to non-browser fetchers during analysis. **Requirement:** ingestion must use a **server-side fetch with browser-like headers** (realistic `User-Agent`, `Accept`, `Referer`), respectful rate limiting, and retry/backoff. A **headless-browser fallback** should be built in if header spoofing proves insufficient. All PDGA access is **server-side only** — never from the client.
-- **Ratings cadence.** Unofficial per-round ratings appear on PDGA Live as soon as 2+ propagators play, so they're available at the Thursday-night refresh — but they are **unofficial**. Official **player** ratings publish **monthly, the 2nd Tuesday**. The app therefore runs an additional **monthly official-rating pull** (aligned to the 2nd-Tuesday update) to refresh the ratings used for eligibility and OLP ([Spec 02 §2.2](./02-Domain-Model-and-Scoring.md#22-pools--eligibility)). Round ratings shown in the UI are labeled **unofficial** until an official update supersedes them.
+- **Ratings cadence.** Unofficial per-round ratings appear on PDGA Live as soon as 2+ propagators play, so they're available at the Thursday-night refresh — but they are **unofficial**. Official **player** ratings publish **monthly, the 2nd Tuesday**. The app therefore runs an additional **monthly official-rating pull** (aligned to the 2nd-Tuesday update) to refresh the ratings used for eligibility and OLP ([Spec 02 §2.2](./02-Domain-Model-and-Scoring.md#22-pools--eligibility)). This monthly pull is a **distinct fetch** — the player rating pages, not the per-event `live-api` — and writes **official** ratings (stored `official = true`) that supersede the unofficial per-round ratings for eligibility gating and the OLP rating component. The UI keeps showing the unofficial per-round rating, labeled **unofficial**, until an official update supersedes it.
 
 ## 3.2 Data the app pulls from PDGA (per configured event)
 
@@ -22,7 +22,7 @@ For each registered PDGA event (a sub-league, a tournament, or the FOD Open), pe
 
 **One PDGA round = one League Night.** Within a sub-league's event, each ingested round is attributed to a single League Night — the source of the "best 15 League Nights" count ([Spec 02 §2.5](./02-Domain-Model-and-Scoring.md#25-top-n-counts-aggregation)). Ingestion must **verify** this mapping holds for the live event shape and fail loudly in the run log if a round can't be attributed to a night.
 
-The app stores a normalized, versioned copy so views never depend on a live PDGA call.
+The app stores a normalized, versioned copy so views never depend on a live PDGA call. Per-round ratings ingested here are stored **unofficial** (`official = false`); the monthly pull (§3.1) writes the superseding **official** rows.
 
 ## 3.3 Data the app does NOT get from PDGA (admin-supplied)
 
@@ -59,11 +59,15 @@ The sub-league structure (3 separate PDGA events) is a launch decision ([Master 
 
 Only tag holders score, so every PDGA entrant must be resolved to a tag holder or explicitly ignored.
 
-1. **Auto-match** PDGA entrants to holders by **PDGA number** first, then by normalized name.
-2. Confident matches are applied automatically.
-3. Anything ambiguous or unmatched is placed in an **admin review queue** (see [Spec 10](./10-Admin-Console.md)) — the app never silently guesses a holder.
-4. Matches are **sticky**: once an admin confirms `PDGA# → holder`, it persists across refreshes.
-5. Non-tag-holders remain in the data (needed to compute raw finish order / round context) but are **excluded from points**.
+1. **Auto-match, in priority order:**
+   - **Exact PDGA number** → the holder carrying that PDGA number. The PDGA number is the source of truth: a number hit auto-links **even if the display name differs** (players change how their name renders on PDGA).
+   - **Unique normalized name** (only when there is no PDGA-number hit): if the entrant's normalized name matches **exactly one** holder, auto-link.
+2. **Confidence policy.** The two cases above are the *only* auto-links. Everything else is routed to the **admin review queue** — specifically a normalized name matching **zero** holders (unmatched) or **two or more** holders (ambiguous). The app never silently guesses a holder.
+3. The review queue lives in the admin console (see [Spec 10 §10.4](./10-Admin-Console.md#104-player-matching-review-queue)); each pending entrant is resolved by **link / create / mark-as-non-holder**.
+4. **Sticky decisions.** Every resolution — an auto-link, or an admin **link / create / mark-as-non-holder** — is recorded keyed by **PDGA number** and persists across refreshes: resolved entrants are never re-queued and auto-links are not re-evaluated each run.
+5. Non-tag-holders remain in the data as a **minimal record** (PDGA number + name) — needed for raw finish order / round context — but are **excluded from points**.
+
+**Name normalization** (for the unique-name auto-match and the queue's suggestions): lowercased, trimmed, internal whitespace collapsed, punctuation and diacritics stripped. Nickname/alias resolution beyond this is out of scope — those simply fall to the review queue and, once linked, stick.
 
 **Requirement:** the public UI must never attribute points to a wrongly matched or unmatched player; unresolved matches surface as a data-quality banner rather than a bad number.
 

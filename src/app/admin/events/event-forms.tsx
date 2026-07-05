@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { markCompleteAction, registerSourceAction, updateSourceAction } from "../actions";
+import { markCompleteAction, registerSourceAction, setSourceStaleAction, updateSourceAction } from "../actions";
 
 type Source = {
   id: number;
@@ -14,6 +14,8 @@ type Source = {
   endDate: string | null;
   complete: boolean;
   active: boolean;
+  stale: boolean;
+  lastGoodAt: string | null;
   divisions: unknown;
 };
 
@@ -101,10 +103,32 @@ export function SourceRow({ source }: { source: Source }) {
     }
   }
 
+  async function handleMarkStale(formData: FormData) {
+    setMessage(null);
+    try {
+      const result = await setSourceStaleAction(formData);
+      setMessage(`Marked stale — version ${result.publishedVersion}`);
+      router.refresh();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleClearStale(formData: FormData) {
+    setMessage(null);
+    try {
+      const result = await setSourceStaleAction(formData);
+      setMessage(`Cleared stale — version ${result.publishedVersion}`);
+      router.refresh();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   if (editing) {
     return (
       <tr>
-        <td colSpan={9}>
+        <td colSpan={10}>
           <form action={handleUpdate}>
             <input type="hidden" name="id" value={source.id} />
             <label>
@@ -148,9 +172,31 @@ export function SourceRow({ source }: { source: Source }) {
       <td>{source.complete ? "yes" : "no"}</td>
       <td>{source.active ? "yes" : "no"}</td>
       <td>
+        {source.stale ? (
+          <span title={source.lastGoodAt ? `Last good: ${source.lastGoodAt}` : undefined}>
+            stale
+          </span>
+        ) : (
+          "fresh"
+        )}
+      </td>
+      <td>
         <button type="button" onClick={() => setEditing(true)}>
           Edit
         </button>{" "}
+        {source.stale ? (
+          <form action={handleClearStale} style={{ display: "inline" }}>
+            <input type="hidden" name="id" value={source.id} />
+            <input type="hidden" name="stale" value="false" />
+            <button type="submit">Clear stale</button>
+          </form>
+        ) : (
+          <form action={handleMarkStale} style={{ display: "inline" }}>
+            <input type="hidden" name="id" value={source.id} />
+            <input type="hidden" name="stale" value="true" />
+            <button type="submit">Mark stale</button>
+          </form>
+        )}{" "}
         {isSubLeague && !source.complete ? (
           <form action={handleMarkComplete} style={{ display: "inline" }}>
             <input type="hidden" name="id" value={source.id} />

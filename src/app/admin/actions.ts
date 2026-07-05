@@ -11,10 +11,14 @@ import {
 import {
   cancelEvent,
   createHolder,
+  createHolderForEntrant,
+  linkEntrant,
+  markNonHolder,
   markSubLeagueComplete,
   recordPoolSwitch,
   registerEventSource,
   setEntryCount,
+  setEventSourceStale,
   setTagNotPresent,
   updateEventSource,
   updateHolderRecord,
@@ -131,6 +135,16 @@ export async function markCompleteAction(formData: FormData): Promise<MutationRe
   return markSubLeagueComplete(id, actorEmail);
 }
 
+export async function setSourceStaleAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
+  if (!Number.isFinite(id)) {
+    throw new AdminError("Invalid source id.");
+  }
+  const stale = String(formData.get("stale") ?? "") === "true";
+  return setEventSourceStale(id, stale, actorEmail);
+}
+
 export async function setEntryCountAction(formData: FormData): Promise<MutationResult> {
   const actorEmail = await requireDirectorEmail();
   const eventId = Number.parseInt(String(formData.get("eventId") ?? ""), 10);
@@ -157,4 +171,44 @@ export async function tagNotPresentAction(formData: FormData): Promise<MutationR
     throw new AdminError("Invalid result id.");
   }
   return setTagNotPresent(resultId, false, actorEmail);
+}
+
+export async function linkEntrantAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const pdgaNumber = Number.parseInt(String(formData.get("pdgaNumber") ?? ""), 10);
+  const holderId = Number.parseInt(String(formData.get("holderId") ?? ""), 10);
+  if (!Number.isFinite(pdgaNumber) || !Number.isFinite(holderId)) {
+    throw new AdminError("Invalid link input.");
+  }
+  return linkEntrant(pdgaNumber, holderId, actorEmail);
+}
+
+export async function createHolderForEntrantAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const pdgaNumber = Number.parseInt(String(formData.get("pdgaNumber") ?? ""), 10);
+  if (!Number.isFinite(pdgaNumber)) {
+    throw new AdminError("Invalid PDGA number.");
+  }
+  return createHolderForEntrant(
+    {
+      pdgaNumber,
+      name: String(formData.get("name") ?? "").trim(),
+      tagNumber: parseTagNumber(String(formData.get("tagNumber") ?? "")),
+      pool: parsePool(String(formData.get("pool") ?? "")),
+      entryDate: String(formData.get("entryDate") ?? "").trim(),
+      ratingAtEntry: parseOptionalInt(String(formData.get("ratingAtEntry") ?? "")),
+      active: parseCheckbox(formData.get("active")),
+      pdgaMembership: parseCheckbox(formData.get("pdgaMembership")),
+    },
+    actorEmail,
+  );
+}
+
+export async function markNonHolderAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const pdgaNumber = Number.parseInt(String(formData.get("pdgaNumber") ?? ""), 10);
+  if (!Number.isFinite(pdgaNumber)) {
+    throw new AdminError("Invalid PDGA number.");
+  }
+  return markNonHolder(pdgaNumber, actorEmail);
 }

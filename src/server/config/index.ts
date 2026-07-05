@@ -62,6 +62,9 @@ const envSchema = z.object({
 
   /** Standard Node environment. */
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+
+  /** Which PDGA source the ingestion pipeline uses (`stub` | `live` | `fixture`). */
+  PDGA_SOURCE: z.enum(["stub", "live", "fixture"]).default("stub"),
 });
 
 type Env = z.infer<typeof envSchema>;
@@ -71,6 +74,8 @@ interface Config extends Env {
   readonly dbPath: string;
   /** `${DATA_DIR}/raw` — raw PDGA response cache. */
   readonly rawDir: string;
+  /** Alias for `PDGA_SOURCE` — ingestion source selector. */
+  readonly pdgaSource: Env["PDGA_SOURCE"];
 }
 
 function loadConfig(): Config {
@@ -89,6 +94,7 @@ function loadConfig(): Config {
     ...env,
     dbPath: path.join(env.DATA_DIR, "fodtags.db"),
     rawDir: path.join(env.DATA_DIR, "raw"),
+    pdgaSource: env.PDGA_SOURCE,
   });
 }
 
