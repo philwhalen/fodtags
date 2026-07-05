@@ -7,7 +7,14 @@ import { hasStaleSource } from "@server/db/repositories/eventSources";
 import { countPending } from "@server/db/repositories/playerMatches";
 import { listHolders } from "@server/db/repositories/tagHolders";
 import { loadSeasonSnapshot } from "@server/db/repositories/seasonSnapshot";
-import type { Pool, SeasonStandingRow, SubLeagueType, SubLeagueWindow } from "@/lib";
+import type {
+  Pool,
+  PublicRoundsPayload,
+  SeasonStandingRow,
+  SubLeagueType,
+  SubLeagueWindow,
+} from "@/lib";
+import { buildRoundsView } from "@server/readmodel/rounds-build";
 
 const POOLS: Pool[] = ["A", "B"];
 const SUB_LEAGUE_TYPES: SubLeagueType[] = ["EARLY", "MID", "LATE"];
@@ -69,7 +76,7 @@ export interface ViewRow {
   /** e.g. `championship/pool-a`, `sub-league/mid/pool-b` (Spec 04 §4.5
    * deep-link naming), or the `sub-leagues` meta view key. */
   viewKey: string;
-  payload: StandingsViewPayload | SubLeagueMetaPayload;
+  payload: StandingsViewPayload | SubLeagueMetaPayload | PublicRoundsPayload;
 }
 
 function toStandingsRows(
@@ -168,6 +175,8 @@ export function buildViews(seasonYear: number): ViewRow[] {
       updatedAt,
     },
   });
+
+  views.push(buildRoundsView(seasonYear));
 
   return views;
 }

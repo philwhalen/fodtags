@@ -14,6 +14,28 @@ export { resolveAliasTarget } from "./alias-target";
 export { buildLeaderboardLinks } from "./leaderboard-links";
 export type { LeaderboardLinks, LeaderboardView } from "./leaderboard-links";
 export { filterRowsByName } from "./filter-rows";
+export { slugifyName } from "./slugify-name";
+export {
+  buildRoundsLinks,
+  parseRoundsFilter,
+  serializeRoundsFilter,
+} from "./rounds-filter";
+export type { RoundsLinks } from "./rounds-filter";
+export {
+  filterHolderRounds,
+  filterRosterByName,
+  roundTrendSeries,
+  summarizeRoster,
+} from "./rounds-projection";
+export { sparklinePath, sparklineSummary } from "./sparkline";
+export type {
+  PublicRoundsPayload,
+  RosterRow,
+  RoundRow,
+  RoundsFilter,
+  RoundsHolderEntry,
+  RoundTypeCode,
+} from "./rounds-types";
 
 // The `computeSeason` engine's input/output contract (Spec 02;
 // plans/common-a/02-engine-scoring.md) — kept here rather than imported

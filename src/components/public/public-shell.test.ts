@@ -113,7 +113,6 @@ describe("public UI shell", () => {
   it("placeholder routes resolve (modules on disk) and are reachable from nav", () => {
     const navHrefs = new Set(publicNavItems(SEASON_YEAR).map((item) => item.href));
     const routeFiles: Record<string, string> = {
-      [`/${SEASON_YEAR}/rounds`]: "src/app/(public)/[season]/rounds/page.tsx",
       [`/${SEASON_YEAR}/olp/early`]: "src/app/(public)/[season]/olp/[league]/page.tsx",
       [`/${SEASON_YEAR}/olp/mid`]: "src/app/(public)/[season]/olp/[league]/page.tsx",
       [`/${SEASON_YEAR}/olp/late`]: "src/app/(public)/[season]/olp/[league]/page.tsx",
@@ -136,6 +135,9 @@ describe("public UI shell", () => {
       );
     }
 
+    expect(
+      fs.existsSync(path.join(REPO_ROOT, "src/app/(public)/[season]/rounds/page.tsx")),
+    ).toBe(true);
     expect(navHrefs.has(`/${SEASON_YEAR}/rounds`)).toBe(true);
     expect(navHrefs.has(`/${SEASON_YEAR}/financials`)).toBe(true);
     expect(navHrefs.has(`/${SEASON_YEAR}/players/search`)).toBe(true);

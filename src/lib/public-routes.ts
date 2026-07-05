@@ -77,7 +77,6 @@ export function publicNavItems(seasonYear: number): PublicNavItem[] {
 export function placeholderRouteHrefs(seasonYear: number): string[] {
   const season = String(seasonYear);
   return [
-    `/${season}/rounds`,
     `/${season}/olp/early`,
     `/${season}/olp/mid`,
     `/${season}/olp/late`,

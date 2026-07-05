@@ -365,9 +365,382 @@
   color: var(--shell-muted);
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.rounds-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.rounds-segment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  background: var(--shell-surface);
+  border: 1px solid var(--shell-border);
+}
+
+.rounds-segment-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--shell-tap-min);
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.375rem;
+  color: var(--shell-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rounds-segment-option:hover,
+.rounds-segment-option:focus-visible {
+  color: var(--shell-text);
+  background: rgba(61, 158, 239, 0.12);
+  outline: 2px solid var(--shell-accent);
+  outline-offset: 2px;
+}
+
+.rounds-segment-option[data-active] {
+  color: var(--shell-bg);
+  background: var(--shell-accent);
+}
+
+.rounds-segment-option[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+.rounds-segment-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--shell-tap-min);
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--shell-bg);
+  background: var(--shell-accent);
+}
+
+.rounds-type-note {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 0.25rem 0.5rem 0.35rem;
+  font-size: 0.8125rem;
+  color: var(--shell-muted);
+}
+
+.sparkline {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.sparkline-svg {
+  display: block;
+  overflow: visible;
+}
+
+.sparkline-path {
+  fill: none;
+  stroke: var(--shell-accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rounds-view-header {
+  margin-bottom: 0.75rem;
+}
+
+.roster-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.roster-filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.roster-filter-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.roster-filter-input {
+  flex: 1 1 auto;
+  min-height: var(--shell-tap-min);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--shell-border);
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  font-size: 0.9375rem;
+}
+
+.roster-filter-input:focus-visible {
+  outline: 2px solid var(--shell-accent);
+  outline-offset: 2px;
+}
+
+.roster-filter-clear {
+  flex: 0 0 auto;
+  min-height: var(--shell-tap-min);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--shell-border);
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.roster-filter-clear:hover:not(:disabled),
+.roster-filter-clear:focus-visible {
+  color: var(--shell-bg);
+  background: var(--shell-accent);
+  outline: none;
+}
+
+.roster-filter-clear:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.roster-filter-no-match {
+  padding: 1.5rem 1rem;
+  margin: 0;
+  text-align: center;
+  color: var(--shell-muted);
+  border: 1px dashed var(--shell-border);
+  border-radius: 0.5rem;
+}
+
+.roster-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--shell-border);
+  border-radius: 0.5rem;
+  background: var(--shell-surface);
+}
+
+.roster-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.roster-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.roster-table thead th {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--shell-muted);
+  border-bottom: 1px solid var(--shell-border);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.roster-table tbody td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--shell-border);
+  vertical-align: middle;
+}
+
+.roster-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.roster-row:hover {
+  background: rgba(61, 158, 239, 0.06);
+}
+
+.roster-player-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--shell-tap-min);
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.roster-player-link:hover,
+.roster-player-link:focus-visible {
+  color: var(--shell-accent);
+  text-decoration: underline;
+  outline: none;
+}
+
+.player-rounds-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.player-rounds-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.player-rounds-back {
+  margin: 0;
+}
+
+.player-rounds-back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--shell-tap-min);
+  color: var(--shell-accent);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.player-rounds-back-link:hover,
+.player-rounds-back-link:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.player-rounds-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.player-rounds-present {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.player-rounds-present-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--shell-muted);
+}
+
+.player-rounds-present-value {
+  font-size: 1.375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-rounds-scope {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--shell-muted);
+}
+
+.player-rounds-empty {
+  padding: 1.5rem 1rem;
+  margin: 0;
+  text-align: center;
+  color: var(--shell-muted);
+  border: 1px dashed var(--shell-border);
+  border-radius: 0.5rem;
+}
+
+.player-rounds-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--shell-border);
+  border-radius: 0.5rem;
+  background: var(--shell-surface);
+}
+
+.player-rounds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.player-rounds-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.player-rounds-table thead th {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--shell-muted);
+  border-bottom: 1px solid var(--shell-border);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.player-rounds-table tbody td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--shell-border);
+  vertical-align: middle;
+}
+
+.player-rounds-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 /* Mobile card layout for narrow screens (Spec 11 §11.1). */
 @media (max-width: 36rem) {
-  .standings-table thead {
+  .standings-table thead,
+  .roster-table thead,
+  .player-rounds-table thead {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -375,17 +748,23 @@
     clip: rect(0, 0, 0, 0);
   }
 
-  .standings-table tbody tr {
+  .standings-table tbody tr,
+  .roster-table tbody tr,
+  .player-rounds-table tbody tr {
     display: block;
     padding: 0.5rem 0;
     border-bottom: 1px solid var(--shell-border);
   }
 
-  .standings-table tbody tr:last-child {
+  .standings-table tbody tr:last-child,
+  .roster-table tbody tr:last-child,
+  .player-rounds-table tbody tr:last-child {
     border-bottom: none;
   }
 
-  .standings-table tbody td {
+  .standings-table tbody td,
+  .roster-table tbody td,
+  .player-rounds-table tbody td {
     display: grid;
     grid-template-columns: 5.5rem 1fr;
     gap: 0.5rem;
@@ -393,7 +772,9 @@
     border-bottom: none;
   }
 
-  .standings-table tbody td::before {
+  .standings-table tbody td::before,
+  .roster-table tbody td::before,
+  .player-rounds-table tbody td::before {
     content: attr(data-label);
     font-size: 0.75rem;
     font-weight: 700;
@@ -401,7 +782,8 @@
     color: var(--shell-muted);
   }
 
-  .standings-table tbody td[data-label="Player"] {
+  .standings-table tbody td[data-label="Player"],
+  .roster-table tbody td[data-label="Player"] {
     font-size: 1rem;
   }
 }
@@ -418,7 +800,8 @@
     --shell-info: #0369a1;
   }
 
-  .standings-table thead th {
+  .standings-table thead th,
+  .player-rounds-table thead th {
     background: #eef2f7;
   }
 }

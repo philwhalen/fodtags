@@ -14,6 +14,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { StandingsViewPayload, SubLeagueMetaPayload, ViewRow } from "@server/readmodel/build";
+import type { PublicRoundsPayload } from "@/lib";
 
 const SEASON_YEAR = 2026;
 
@@ -139,5 +140,272 @@ describe("read model: build -> publish -> read", () => {
     const next = buildAndPublish(SEASON_YEAR);
     expect(next).toBe(before + 1);
     expect(getCurrentVersion(SEASON_YEAR)).toBe(next);
+  });
+});
+
+describe("read model: rounds view", () => {
+  let buildRoundsView: (seasonYear: number) => ViewRow;
+  let listHolders: (seasonYear: number) => { id: number; name: string; tagNumber: number; active: boolean }[];
+  let listEvents: (seasonYear: number) => { id: number; label: string; canceled: boolean }[];
+  let listSources: (seasonYear: number) => { id: number; type: string }[];
+  let insertRating: (input: {
+    seasonYear: number;
+    holderId: number;
+    effectiveDate: string;
+    rating: number;
+    official?: boolean;
+  }) => void;
+  let insertSource: (input: {
+    seasonYear: number;
+    pdgaEventId: string;
+    type: "TOURNAMENT" | "FOD_OPEN";
+    label: string;
+  }) => number;
+  let insertEvent: (input: {
+    seasonYear: number;
+    eventSourceId: number;
+    type: "Tournament" | "FODOpen";
+    label: string;
+    eventDate: string;
+  }) => number;
+  let insertResult: (input: {
+    seasonYear: number;
+    eventId: number;
+    displayName: string;
+    holderId?: number | null;
+    rawScoreToPar: number;
+    roundRating?: number | null;
+    pdgaNumber?: number | null;
+  }) => number;
+  let setSourceStale: (id: number, stale: boolean) => void;
+
+  let alexId: number;
+  let samId: number;
+  let morganId: number;
+  let midLeagueNightEventId: number;
+  let earlyLeagueNight3EventId: number;
+
+  beforeAll(async () => {
+    const [
+      roundsBuild,
+      tagHoldersRepo,
+      eventsRepo,
+      sourcesRepo,
+      ratingsRepo,
+      resultsRepo,
+    ] = await Promise.all([
+      import("@server/readmodel/rounds-build"),
+      import("@server/db/repositories/tagHolders"),
+      import("@server/db/repositories/events"),
+      import("@server/db/repositories/eventSources"),
+      import("@server/db/repositories/ratingsHistory"),
+      import("@server/db/repositories/eventResults"),
+    ]);
+
+    buildRoundsView = roundsBuild.buildRoundsView;
+    listHolders = tagHoldersRepo.listHolders;
+    listEvents = eventsRepo.listEvents;
+    listSources = sourcesRepo.listSources;
+    insertRating = ratingsRepo.insertRating;
+    insertSource = sourcesRepo.insertSource;
+    insertEvent = eventsRepo.insertEvent;
+    insertResult = resultsRepo.insertResult;
+    setSourceStale = sourcesRepo.setSourceStale;
+
+    const holders = listHolders(SEASON_YEAR);
+    alexId = holders.find((h) => h.name === "Alex Rivera")!.id;
+    samId = holders.find((h) => h.name === "Sam Patel")!.id;
+    morganId = holders.find((h) => h.name === "Morgan Kim")!.id;
+
+    const events = listEvents(SEASON_YEAR);
+    midLeagueNightEventId = events.find((e) => e.label === "Mid League Night 1")!.id;
+    earlyLeagueNight3EventId = events.find((e) => e.label === "Early League Night 3")!.id;
+
+    // Later unofficial row must not override the latest official present rating.
+    insertRating({
+      seasonYear: SEASON_YEAR,
+      holderId: alexId,
+      effectiveDate: "2026-05-15",
+      rating: 1050,
+      official: false,
+    });
+
+    // Only-unofficial holder → Unrated (null).
+    insertRating({
+      seasonYear: SEASON_YEAR,
+      holderId: samId,
+      effectiveDate: "2026-05-01",
+      rating: 940,
+      official: false,
+    });
+
+    // Two officials → latest effectiveDate wins (815 on 2026-04-14, not 810).
+    insertRating({
+      seasonYear: SEASON_YEAR,
+      holderId: morganId,
+      effectiveDate: "2026-03-01",
+      rating: 810,
+      official: true,
+    });
+
+    // Pending round rating on an existing league night.
+    insertResult({
+      seasonYear: SEASON_YEAR,
+      eventId: midLeagueNightEventId,
+      holderId: samId,
+      displayName: "Sam Patel",
+      pdgaNumber: null,
+      rawScoreToPar: 4,
+      roundRating: null,
+    });
+
+    const tourneySourceId = insertSource({
+      seasonYear: SEASON_YEAR,
+      pdgaEventId: "TEST-TOURNEY-2026",
+      type: "TOURNAMENT",
+      label: "Test Tournament Source",
+    });
+    const tourneyEventId = insertEvent({
+      seasonYear: SEASON_YEAR,
+      eventSourceId: tourneySourceId,
+      type: "Tournament",
+      label: "Spring Open",
+      eventDate: "2026-06-15",
+    });
+    insertResult({
+      seasonYear: SEASON_YEAR,
+      eventId: tourneyEventId,
+      holderId: alexId,
+      displayName: "Alex Rivera",
+      pdgaNumber: 123456,
+      rawScoreToPar: -6,
+      roundRating: 1030,
+    });
+
+    const fodSourceId = insertSource({
+      seasonYear: SEASON_YEAR,
+      pdgaEventId: "TEST-FOD-2026",
+      type: "FOD_OPEN",
+      label: "Test FOD Open Source",
+    });
+    const fodEventId = insertEvent({
+      seasonYear: SEASON_YEAR,
+      eventSourceId: fodSourceId,
+      type: "FODOpen",
+      label: "FOD Open Round 1",
+      eventDate: "2026-08-01",
+    });
+    insertResult({
+      seasonYear: SEASON_YEAR,
+      eventId: fodEventId,
+      holderId: alexId,
+      displayName: "Alex Rivera",
+      pdgaNumber: 123456,
+      rawScoreToPar: -3,
+      roundRating: 1018,
+    });
+
+    // Unmatched guest — must not appear under any holder.
+    insertResult({
+      seasonYear: SEASON_YEAR,
+      eventId: midLeagueNightEventId,
+      holderId: null,
+      displayName: "Guest Player",
+      pdgaNumber: 999999,
+      rawScoreToPar: 7,
+      roundRating: 900,
+    });
+  });
+
+  function roundsPayload(): PublicRoundsPayload {
+    return buildRoundsView(SEASON_YEAR).payload as PublicRoundsPayload;
+  }
+
+  function holderByName(name: string) {
+    const entry = roundsPayload().holders.find((h) => h.name === name);
+    expect(entry).toBeDefined();
+    return entry!;
+  }
+
+  it("includes a rounds view in buildViews output", () => {
+    const views = buildViews(SEASON_YEAR);
+    expect(views.some((v) => v.viewKey === "rounds")).toBe(true);
+  });
+
+  it("picks the latest official present rating and ignores unofficial rows", () => {
+    expect(holderByName("Alex Rivera").presentRating).toBe(1010);
+    expect(holderByName("Sam Patel").presentRating).toBeNull();
+    expect(holderByName("Morgan Kim").presentRating).toBe(815);
+  });
+
+  it("maps scoreToPar and roundRating through; null roundRating stays pending", () => {
+    const alex = holderByName("Alex Rivera");
+    const early1 = alex.rounds.find((r) => r.eventLabel === "Early League Night 1");
+    expect(early1).toEqual(
+      expect.objectContaining({ scoreToPar: -4, roundRating: 1015, subLeague: "EARLY" }),
+    );
+
+    const sam = holderByName("Sam Patel");
+    const pending = sam.rounds.find((r) => r.eventLabel === "Mid League Night 1");
+    expect(pending).toEqual(
+      expect.objectContaining({ scoreToPar: 4, roundRating: null, subLeague: "MID" }),
+    );
+  });
+
+  it("omits rounds from canceled events", () => {
+    const alex = holderByName("Alex Rivera");
+    expect(alex.rounds.some((r) => r.eventLabel === "Early League Night 3")).toBe(false);
+    expect(
+      listEvents(SEASON_YEAR).find((e) => e.id === earlyLeagueNight3EventId)!.canceled,
+    ).toBe(true);
+  });
+
+  it("attributes sub-league on League Nights only", () => {
+    const alex = holderByName("Alex Rivera");
+    expect(alex.rounds.find((r) => r.eventLabel === "Mid League Night 1")?.subLeague).toBe("MID");
+    expect(alex.rounds.find((r) => r.eventLabel === "Spring Open")?.subLeague).toBeNull();
+    expect(alex.rounds.find((r) => r.eventLabel === "FOD Open Round 1")?.subLeague).toBeNull();
+  });
+
+  it("includes active holders with zero rounds", () => {
+    const casey = holderByName("Casey Nguyen");
+    expect(casey.rounds).toEqual([]);
+    expect(roundsPayload().holders.length).toBe(
+      listHolders(SEASON_YEAR).filter((h) => h.active).length,
+    );
+  });
+
+  it("does not attach unmatched results to any holder", () => {
+    const totalRoundRows = roundsPayload().holders.reduce((n, h) => n + h.rounds.length, 0);
+    const matchedOnly = listHolders(SEASON_YEAR)
+      .filter((h) => h.active)
+      .reduce((n, h) => {
+        const entry = holderByName(h.name);
+        return n + entry.rounds.length;
+      }, 0);
+    expect(totalRoundRows).toBe(matchedOnly);
+    expect(roundsPayload().holders.every((h) => !h.rounds.some((r) => r.scoreToPar === 7))).toBe(
+      true,
+    );
+  });
+
+  it("flags stale sub-leagues independently", () => {
+    const midSource = listSources(SEASON_YEAR).find((s) => s.type === "MID")!;
+    setSourceStale(midSource.id, true);
+    try {
+      const payload = roundsPayload();
+      expect(payload.stale).toBe(true);
+      expect(payload.staleLeagues).toEqual(["mid"]);
+    } finally {
+      setSourceStale(midSource.id, false);
+    }
+  });
+
+  it("stamps freshness metadata at the build edge", () => {
+    const payload = roundsPayload();
+    expect(typeof payload.updatedAt).toBe("string");
+    expect(typeof payload.pendingReview).toBe("number");
+    expect(payload.stale).toBe(false);
+    expect(payload.staleLeagues).toEqual([]);
   });
 });
