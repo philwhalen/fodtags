@@ -355,6 +355,25 @@
   font-size: 0.75rem;
 }
 
+.olp-pot-summary {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--shell-muted);
+}
+
+.olp-table-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.olp-not-eligible-heading {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--shell-muted);
+}
+
 .coming-soon h1 {
   margin: 0 0 0.5rem;
   font-size: 1.25rem;

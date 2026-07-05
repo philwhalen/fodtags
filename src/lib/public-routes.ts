@@ -52,7 +52,7 @@ export function publicNavItems(seasonYear: number): PublicNavItem[] {
     },
     {
       label: "OLP",
-      href: `/${season}/olp/mid`,
+      href: `/${season}/olp`,
       description: "Overall League Performance pot",
     },
     {
@@ -77,9 +77,6 @@ export function publicNavItems(seasonYear: number): PublicNavItem[] {
 export function placeholderRouteHrefs(seasonYear: number): string[] {
   const season = String(seasonYear);
   return [
-    `/${season}/olp/early`,
-    `/${season}/olp/mid`,
-    `/${season}/olp/late`,
     `/${season}/score-sheet/pool-a`,
     `/${season}/score-sheet/pool-b`,
     `/${season}/financials`,

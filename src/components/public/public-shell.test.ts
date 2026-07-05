@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { formatEt } from "@/lib";
 import {
+  isValidSubLeague,
   placeholderRouteHrefs,
   publicNavItems,
 } from "@/lib/public-routes";
@@ -113,9 +114,6 @@ describe("public UI shell", () => {
   it("placeholder routes resolve (modules on disk) and are reachable from nav", () => {
     const navHrefs = new Set(publicNavItems(SEASON_YEAR).map((item) => item.href));
     const routeFiles: Record<string, string> = {
-      [`/${SEASON_YEAR}/olp/early`]: "src/app/(public)/[season]/olp/[league]/page.tsx",
-      [`/${SEASON_YEAR}/olp/mid`]: "src/app/(public)/[season]/olp/[league]/page.tsx",
-      [`/${SEASON_YEAR}/olp/late`]: "src/app/(public)/[season]/olp/[league]/page.tsx",
       [`/${SEASON_YEAR}/score-sheet/pool-a`]:
         "src/app/(public)/[season]/score-sheet/[pool]/page.tsx",
       [`/${SEASON_YEAR}/score-sheet/pool-b`]:
@@ -130,9 +128,7 @@ describe("public UI shell", () => {
     }
 
     for (const href of placeholderRouteHrefs(SEASON_YEAR)) {
-      expect(navHrefs.has(href) || href.includes("/olp/") || href.includes("/score-sheet/")).toBe(
-        true,
-      );
+      expect(navHrefs.has(href) || href.includes("/score-sheet/")).toBe(true);
     }
 
     expect(
@@ -141,5 +137,34 @@ describe("public UI shell", () => {
     expect(navHrefs.has(`/${SEASON_YEAR}/rounds`)).toBe(true);
     expect(navHrefs.has(`/${SEASON_YEAR}/financials`)).toBe(true);
     expect(navHrefs.has(`/${SEASON_YEAR}/players/search`)).toBe(true);
+  });
+
+  it("OLP routes (real pages, not placeholders) resolve and the alias is reachable from nav", () => {
+    const navHrefs = new Set(publicNavItems(SEASON_YEAR).map((item) => item.href));
+
+    // The nav OLP item now points at the bare `/olp` alias, not a specific league.
+    expect(navHrefs.has(`/${SEASON_YEAR}/olp`)).toBe(true);
+    expect(navHrefs.has(`/${SEASON_YEAR}/olp/mid`)).toBe(false);
+
+    // Neither is a placeholder anymore — both are real pages, so they must
+    // NOT appear in the placeholder-route list.
+    const placeholders = placeholderRouteHrefs(SEASON_YEAR);
+    expect(placeholders.some((href) => href.startsWith(`/${SEASON_YEAR}/olp`))).toBe(false);
+
+    expect(
+      fs.existsSync(path.join(REPO_ROOT, "src/app/(public)/[season]/olp/page.tsx")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(REPO_ROOT, "src/app/(public)/[season]/olp/[league]/page.tsx")),
+    ).toBe(true);
+
+    // The three explicit `/olp/<league>` deep links: valid slugs whose
+    // published view actually resolves (the strongest available proxy for
+    // "200, not 404" without a jsdom/route harness in this repo).
+    for (const league of ["early", "mid", "late"] as const) {
+      expect(isValidSubLeague(league)).toBe(true);
+      const published = getPublished(SEASON_YEAR, `olp/${league}`);
+      expect(published).toBeDefined();
+    }
   });
 });

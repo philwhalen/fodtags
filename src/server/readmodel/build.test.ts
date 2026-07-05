@@ -409,3 +409,176 @@ describe("read model: rounds view", () => {
     expect(payload.staleLeagues).toEqual([]);
   });
 });
+
+describe("read model: OLP view", () => {
+  let listHoldersOlp: (
+    seasonYear: number,
+  ) => { id: number; name: string; pdgaMembership: boolean }[];
+  let listSourcesOlp: (seasonYear: number) => { id: number; type: string }[];
+  let updateSourceOlp: (id: number, patch: { complete?: boolean }) => void;
+  let setSourceStaleOlp: (id: number, stale: boolean) => void;
+  let insertEventOlp: (input: {
+    seasonYear: number;
+    eventSourceId: number;
+    type: "LeagueNight";
+    label: string;
+    eventDate: string;
+    roundOrdinal: number;
+  }) => number;
+  let insertResultOlp: (input: {
+    seasonYear: number;
+    eventId: number;
+    displayName: string;
+    holderId?: number | null;
+    rawScoreToPar: number;
+  }) => number;
+  let upsertEntryCountOlp: (input: {
+    seasonYear: number;
+    eventId: number;
+    paidEntries: number;
+  }) => void;
+
+  let alexId: number;
+  let samId: number;
+  let morganId: number;
+  let midSourceId: number;
+
+  beforeAll(async () => {
+    const [tagHoldersRepo, eventSourcesRepo, eventsRepo, resultsRepo, entryCountsRepo] =
+      await Promise.all([
+        import("@server/db/repositories/tagHolders"),
+        import("@server/db/repositories/eventSources"),
+        import("@server/db/repositories/events"),
+        import("@server/db/repositories/eventResults"),
+        import("@server/db/repositories/entryCounts"),
+      ]);
+
+    listHoldersOlp = tagHoldersRepo.listHolders;
+    listSourcesOlp = eventSourcesRepo.listSources;
+    updateSourceOlp = eventSourcesRepo.updateSource;
+    setSourceStaleOlp = eventSourcesRepo.setSourceStale;
+    insertEventOlp = eventsRepo.insertEvent;
+    insertResultOlp = resultsRepo.insertResult;
+    upsertEntryCountOlp = entryCountsRepo.upsertEntryCount;
+
+    const holders = listHoldersOlp(SEASON_YEAR);
+    alexId = holders.find((h) => h.name === "Alex Rivera")!.id; // pdgaMembership: true
+    samId = holders.find((h) => h.name === "Sam Patel")!.id; // pdgaMembership: false
+    morganId = holders.find((h) => h.name === "Morgan Kim")!.id; // pdgaMembership: true
+    midSourceId = listSourcesOlp(SEASON_YEAR).find((s) => s.type === "MID")!.id;
+
+    // The seed fixture + the "rounds view" describe above already gives MID
+    // one League Night (round 1) with Alex (-3) and Morgan (2), plus a
+    // pending Sam row (rawScoreToPar 4) added by that block. Add 3 more MID
+    // League Nights with Alex + Sam only (never Morgan), so: Alex reaches 4
+    // rounds with PDGA membership (eligible); Sam reaches 4 rounds WITHOUT
+    // PDGA membership (not-eligible: "no PDGA"); Morgan stays at 1 round
+    // (not-eligible: "1 round").
+    for (const roundOrdinal of [2, 3, 4]) {
+      const eventId = insertEventOlp({
+        seasonYear: SEASON_YEAR,
+        eventSourceId: midSourceId,
+        type: "LeagueNight",
+        label: `Mid League Night ${roundOrdinal}`,
+        eventDate: `2026-05-${20 + roundOrdinal}`,
+        roundOrdinal,
+      });
+      insertResultOlp({
+        seasonYear: SEASON_YEAR,
+        eventId,
+        holderId: alexId,
+        displayName: "Alex Rivera",
+        rawScoreToPar: -1,
+      });
+      insertResultOlp({
+        seasonYear: SEASON_YEAR,
+        eventId,
+        holderId: samId,
+        displayName: "Sam Patel",
+        rawScoreToPar: 2,
+      });
+      upsertEntryCountOlp({ seasonYear: SEASON_YEAR, eventId, paidEntries: 5 });
+    }
+  });
+
+  function olpView(type: "early" | "mid" | "late") {
+    const view = buildViews(SEASON_YEAR).find((v) => v.viewKey === `olp/${type}`);
+    expect(view).toBeDefined();
+    return view!.payload as import("@/lib").PublicOlpPayload;
+  }
+
+  it("carries resolved names and engine score order", () => {
+    const payload = olpView("mid");
+    const byHolder = new Map(payload.rows.map((r) => [r.holderId, r]));
+
+    expect(byHolder.get(alexId)?.name).toBe("Alex Rivera");
+    expect(byHolder.get(samId)?.name).toBe("Sam Patel");
+    expect(byHolder.get(morganId)?.name).toBe("Morgan Kim");
+
+    // Engine order: sorted by score ascending (tie broken by tag number) —
+    // already guaranteed by the engine, just checked here for the wiring.
+    payload.rows.forEach((row, i) => {
+      if (i > 0) {
+        expect(payload.rows[i - 1]!.score).toBeLessThanOrEqual(row.score);
+      }
+    });
+  });
+
+  it("marks eligibility and reasons correctly (rounds vs. PDGA membership)", () => {
+    const payload = olpView("mid");
+    const byHolder = new Map(payload.rows.map((r) => [r.holderId, r]));
+
+    const alex = byHolder.get(alexId)!;
+    expect(alex.rounds).toBe(4);
+    expect(alex.eligible).toBe(true);
+
+    const sam = byHolder.get(samId)!;
+    expect(sam.rounds).toBe(4);
+    expect(sam.eligible).toBe(false); // 4 rounds but no PDGA membership
+
+    const morgan = byHolder.get(morganId)!;
+    expect(morgan.rounds).toBe(1);
+    expect(morgan.eligible).toBe(false); // <4 rounds
+  });
+
+  it("computes the pot as $1 x seeded paid entries for that sub-league", () => {
+    // 5 (seed's Mid League Night 1) + 5 + 5 + 5 (the 3 added above) = 20.
+    expect(olpView("mid").pot).toBe(20);
+  });
+
+  it("marks projected true while the sub-league is incomplete, false once complete", () => {
+    expect(olpView("mid").projected).toBe(true);
+
+    updateSourceOlp(midSourceId, { complete: true });
+    try {
+      expect(olpView("mid").projected).toBe(false);
+    } finally {
+      updateSourceOlp(midSourceId, { complete: false });
+    }
+  });
+
+  it("reflects only that sub-league's stale source", () => {
+    setSourceStaleOlp(midSourceId, true);
+    try {
+      expect(olpView("mid").stale).toBe(true);
+      expect(olpView("early").stale).toBe(false);
+    } finally {
+      setSourceStaleOlp(midSourceId, false);
+    }
+  });
+
+  it("yields empty rows and a zero pot for a sub-league with no rounds", () => {
+    const payload = olpView("late");
+    expect(payload.rows).toEqual([]);
+    expect(payload.pot).toBe(0);
+  });
+
+  it("excludes a canceled League Night from an eligible holder's rounds (wiring guard only)", () => {
+    // Early League Night 3 is seeded canceled; Alex's EARLY OLP rounds
+    // reflect only the 2 non-canceled nights — full cancellation behavior
+    // is engine-tested (season.test.ts); this just guards the wiring.
+    const early = olpView("early");
+    const alex = early.rows.find((r) => r.holderId === alexId);
+    expect(alex?.rounds).toBe(2);
+  });
+});

@@ -82,9 +82,16 @@ sparklines. Built as a read-only projection: a new `rounds` read-model view asse
 directly from repositories (engine untouched), with pure `src/lib` helpers carrying the
 filter/projection/trend logic.
 
-### Feature 3 — OLP Pot  ([spec 06](../specs/06-Feature-OLP-Pot.md))
+### Feature 3 — OLP Pot  ([spec 06](../specs/06-Feature-OLP-Pot.md)) ✅ complete
+_Accepted and archived: [`plans/completed/olp-pot-00-master.md`](./completed/olp-pot-00-master.md) (token/cost accounting intact)._
+
 Per-sub-league OLP standings with the four explainable components and projected payouts
-(payouts backed by the Common A pot-balance slice).
+(payouts backed by the Common A pot-balance slice). Built as a read-only projection of the
+engine's existing `olp`/`olpPot` output: a per-sub-league `olp/<league>` read-model view, a
+pure `src/lib/olp-view.ts` projection (eligible-only 1..N ranking + a separate "Not yet
+eligible" section), an Early · Mid · Late selector with "(now)", the total-pot display with
+projected/final labels, a `/2026/olp` → current-sub-league redirect alias, and a client-side
+name filter — engine untouched.
 
 ### Feature 4 — Pool Score Sheets  ([spec 07](../specs/07-Feature-Pool-Score-Sheets.md))
 Per-pool "show your work" breakdown; counted vs. dropped line items; stated top-N caps.
@@ -109,9 +116,11 @@ Aggregates all five prior views → built last.
 
 ## Next planning pass
 
-Take **Feature 3 — OLP Pot** into the full spec-driven workflow: confirm/expand
-[spec 06](../specs/06-Feature-OLP-Pot.md) (per-sub-league OLP standings with the four
-explainable components and projected payouts, backed by the Common A pot-balance slice),
-then produce `plans/olp-pot/00-master.md` + sub-plans at implementation granularity.
+Take **Feature 4 — Pool Score Sheets** into the full spec-driven workflow: confirm/expand
+[spec 07](../specs/07-Feature-Pool-Score-Sheets.md) (per-pool "show your work" breakdown —
+counted vs. dropped line items, with the stated top-N caps), then produce
+`plans/score-sheets/00-master.md` + sub-plans at implementation granularity. The engine
+already emits the `scoreSheet` shape (counted/dropped line items per holder), so — like
+Features 2–3 — this is expected to be largely a read-only projection over existing output.
 
-_Common Work A/B and Features 1–2 completed — see the ✅ markers above._
+_Common Work A/B and Features 1–3 completed — see the ✅ markers above._

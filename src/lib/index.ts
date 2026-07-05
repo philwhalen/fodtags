@@ -121,6 +121,8 @@ export type {
   PublicStandingsViewPayload,
   PublicSubLeagueMetaPayload,
 } from "./standings-view";
+export { buildOlpLinks, projectOlp } from "./olp-view";
+export type { OlpProjection, PublicOlpPayload, PublicOlpRow } from "./olp-view";
 export {
   isValidPool,
   isValidSubLeague,

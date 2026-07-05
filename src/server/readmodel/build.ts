@@ -9,6 +9,7 @@ import { listHolders } from "@server/db/repositories/tagHolders";
 import { loadSeasonSnapshot } from "@server/db/repositories/seasonSnapshot";
 import type {
   Pool,
+  PublicOlpPayload,
   PublicRoundsPayload,
   SeasonStandingRow,
   SubLeagueType,
@@ -76,7 +77,7 @@ export interface ViewRow {
   /** e.g. `championship/pool-a`, `sub-league/mid/pool-b` (Spec 04 §4.5
    * deep-link naming), or the `sub-leagues` meta view key. */
   viewKey: string;
-  payload: StandingsViewPayload | SubLeagueMetaPayload | PublicRoundsPayload;
+  payload: StandingsViewPayload | SubLeagueMetaPayload | PublicRoundsPayload | PublicOlpPayload;
 }
 
 function toStandingsRows(
@@ -157,6 +158,33 @@ export function buildViews(seasonYear: number): ViewRow[] {
         },
       });
     }
+  }
+
+  // OLP views (Spec 06 §6.2/§6.4): one `olp/<sub-league>` view per
+  // sub-league, projecting `results.olp`/`results.olpPot` (already computed
+  // by the pure engine above) + resolved holder names. No new computation
+  // happens here — the eligible-only re-rank and not-eligible split are a
+  // display-time concern handled by `projectOlp` (src/lib/olp-view.ts).
+  for (const type of SUB_LEAGUE_TYPES) {
+    const rows = results.olp[type].map((r) => ({
+      ...r,
+      name: nameById.get(r.holderId) ?? `Holder #${r.holderId}`,
+    }));
+    views.push({
+      seasonYear,
+      viewKey: `olp/${type.toLowerCase()}`,
+      payload: {
+        subLeague: type,
+        rows,
+        pot: results.olpPot[type],
+        // Mirrors the sub-league's `complete` flag, same as `finalized`
+        // above — while incomplete, the pot/payouts here are projections.
+        projected: !results.podium[type].complete,
+        updatedAt,
+        stale: isViewStale(seasonYear, type),
+        pendingReview,
+      },
+    });
   }
 
   // `sub-leagues` meta view (Spec 04 §4.3/§4.5 boundary decision): sourced
