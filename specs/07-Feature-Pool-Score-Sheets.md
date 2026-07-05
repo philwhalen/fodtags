@@ -57,7 +57,7 @@ The holders shown on a pool's sheet — and their order and rank — are exactly
 
 ## 7.4 Relationship to the spreadsheet's "score sheet"
 
-The legacy Google Sheet showed per-pool ranked lists with skins-pot values attached. This app **separates concerns**: the competitive points breakdown lives here (points only); **all skins/CTP purse math lives in [Financials](./09-Financials.md)**, cross-linked from this page. The cross-link is wired once the Financials feature ships; until then the score sheet stands alone as a points-only view.
+The legacy Google Sheet showed per-pool ranked lists with skins-pot values attached. This app **separates concerns**: the competitive points breakdown lives here (points only); **all skins/CTP purse math lives in [Financials](./09-Financials.md)**, cross-linked from this page. Each pool's score sheet carries a link to that pool's **skins purse detail** on the financials page ([Spec 09 §9.3](./09-Financials.md#93-public-financial-views), `#pots-skins`), so a viewer can jump from the points breakdown to what the pool's skins are worth.
 
 ## 7.5 States
 

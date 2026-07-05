@@ -105,7 +105,15 @@ export function ScoreSheetTable({
 
   return (
     <div>
-      <p className="score-sheet-caps">{capsNote}</p>
+      <p className="score-sheet-caps">
+        {capsNote} ·{" "}
+        <Link
+          href={`/${seasonYear}/financials#pots-skins` as Route}
+          className="score-sheet-skins-link"
+        >
+          skins purse detail →
+        </Link>
+      </p>
 
       <div className="standings-table-wrap">
         <table className="standings-table">

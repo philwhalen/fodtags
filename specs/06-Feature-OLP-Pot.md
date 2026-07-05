@@ -40,7 +40,7 @@ The ranked table lists the **eligible** players, ranked 1..N by OLP score (best/
 
 - The page shows the **total OLP pot** for the sub-league alongside the per-rank payouts, so viewers see the whole pool and how it splits. Label it **"projected"** while the sub-league is in progress and **"final"** once complete (§6.4), matching the payout labels.
 - Projected payout for ranks 1–3 = 50% / 30% / 20% of the sub-league's OLP pot, rounded to whole dollars via **largest-remainder** so the three shares sum exactly to the pot ([Spec 02 §2.8](./02-Domain-Model-and-Scoring.md#28-overall-league-performance-olp)).
-- The OLP pot balance comes from [Financials](./09-Financials.md) ($1 per League-Night entry into the OLP pot); at this stage it is the Common-A per-night entry-count slice.
+- The OLP pot balance comes from [Financials](./09-Financials.md) ($1 per League-Night entry into the OLP pot); at this stage it is the Common-A per-night entry-count slice. The displayed **total pot cross-links to the OLP pot detail** on the financials page ([Spec 09 §9.3](./09-Financials.md#93-public-financial-views), `#pots-olp`).
 - Before a sub-league completes, mark payouts **"projected"**; after, **"final."**
 - If fewer than 3 players are eligible, only the available ranks receive a payout; the pot total is still shown in full.
 

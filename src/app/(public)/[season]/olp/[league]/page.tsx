@@ -44,7 +44,7 @@ export default async function OlpPage({
         <header className="standings-view-header">
           <h1 className="standings-view-title">{title}</h1>
           {controls}
-          <OlpPotSummary pot={0} projected={true} />
+          <OlpPotSummary pot={0} projected={true} seasonYear={seasonYear} />
           <FreshnessHeader
             updatedAt={new Date(0).toISOString()}
             stale={false}
@@ -66,7 +66,7 @@ export default async function OlpPage({
       <header className="standings-view-header">
         <h1 className="standings-view-title">{title}</h1>
         {controls}
-        <OlpPotSummary pot={payload.pot} projected={payload.projected} />
+        <OlpPotSummary pot={payload.pot} projected={payload.projected} seasonYear={seasonYear} />
         <FreshnessHeader
           updatedAt={payload.updatedAt}
           stale={payload.stale}

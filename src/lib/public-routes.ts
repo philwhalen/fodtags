@@ -76,5 +76,5 @@ export function publicNavItems(seasonYear: number): PublicNavItem[] {
 /** All placeholder routes that must resolve (no 404) for nav smoke tests. */
 export function placeholderRouteHrefs(seasonYear: number): string[] {
   const season = String(seasonYear);
-  return [`/${season}/financials`, `/${season}/players/search`];
+  return [`/${season}/players/search`];
 }

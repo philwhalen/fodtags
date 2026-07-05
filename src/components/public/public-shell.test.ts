@@ -115,7 +115,6 @@ describe("public UI shell", () => {
   it("placeholder routes resolve (modules on disk) and are reachable from nav", () => {
     const navHrefs = new Set(publicNavItems(SEASON_YEAR).map((item) => item.href));
     const routeFiles: Record<string, string> = {
-      [`/${SEASON_YEAR}/financials`]: "src/app/(public)/[season]/financials/page.tsx",
       [`/${SEASON_YEAR}/players/search`]: "src/app/(public)/[season]/players/[slug]/page.tsx",
     };
 
@@ -132,8 +131,27 @@ describe("public UI shell", () => {
       fs.existsSync(path.join(REPO_ROOT, "src/app/(public)/[season]/rounds/page.tsx")),
     ).toBe(true);
     expect(navHrefs.has(`/${SEASON_YEAR}/rounds`)).toBe(true);
-    expect(navHrefs.has(`/${SEASON_YEAR}/financials`)).toBe(true);
     expect(navHrefs.has(`/${SEASON_YEAR}/players/search`)).toBe(true);
+  });
+
+  it("Financials route (real page) resolves and is reachable from nav", () => {
+    const navHrefs = new Set(publicNavItems(SEASON_YEAR).map((item) => item.href));
+
+    // Nav still deep-links the financials page (unchanged href).
+    expect(navHrefs.has(`/${SEASON_YEAR}/financials`)).toBe(true);
+
+    // No longer a placeholder — must not appear in the placeholder list.
+    const placeholders = placeholderRouteHrefs(SEASON_YEAR);
+    expect(placeholders.some((href) => href.startsWith(`/${SEASON_YEAR}/financials`))).toBe(
+      false,
+    );
+
+    expect(
+      fs.existsSync(path.join(REPO_ROOT, "src/app/(public)/[season]/financials/page.tsx")),
+    ).toBe(true);
+
+    const published = getPublished(SEASON_YEAR, "financials");
+    expect(published).toBeDefined();
   });
 
   it("Score-sheet routes (real pages, not placeholders) resolve and are reachable from nav", () => {

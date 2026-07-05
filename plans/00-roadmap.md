@@ -117,8 +117,18 @@ mutations/actions (opening balances, tag sales, payouts with ace-win validation,
 signed overrides, ace-entry counts); and the `/admin/financials` hub + read-only
 `/admin/audit` viewer. Public financial views were deliberately left to Feature 5.
 
-### Feature 5 — Financials  ([spec 09](../specs/09-Financials.md))
-Public transparency: season summary, pot detail, full chronological ledger.
+### Feature 5 — Financials  ([spec 09](../specs/09-Financials.md)) ✅ complete
+_Accepted and archived: [`plans/completed/financials-00-master.md`](./completed/financials-00-master.md) (token/cost accounting intact)._
+
+Public transparency: season summary, pot detail, full chronological ledger. Built as a
+read-only projection of the engine's existing `computeSeason().financials` output: a single
+`financials` read-model view, a pure `src/lib/financials-view.ts` projection (per-fund
+projected/final labels, OLP 50-30-20 largest-remainder, ledger rows with expandable per-night
+splits and purely-`deltas`-derived source links), a one-page `/{season}/financials` (summary ·
+pots · ledger with in-page anchors), two-way cross-links with the OLP/score-sheet pages, and a
+real-data reconciliation fixture (`real-2026.ts` + `db:seed:real`) that reproduces the league
+sheet's own totals to the cent ($1,246.92 total club cash) — engine untouched. Implemented via
+Sonnet 5 sub-agents per sub-plan (CLAUDE.md Stage 3 model-selection guidance), Opus orchestrating.
 
 ### Feature 6 — Player Profiles  ([spec 08](../specs/08-Feature-Player-Profiles.md))
 Per-holder page unifying standings, rounds/ratings, points breakdown, OLP, and money.
@@ -130,14 +140,16 @@ Aggregates all five prior views → built last.
 
 ## Next planning pass
 
-Take **Feature 5 — Financials** into the full spec-driven workflow: it is now unblocked by
-Common Work C, which shipped the financial engine (`computeSeason().financials`: fund balances
-+ typed ledger with running total-cash), the normalized financial store, and the admin
-data-entry. Feature 5 is a **read-only projection** over that engine output (like Features 1–4):
-build the `financials/*` read-model views in `buildViews`, a pure `src/lib/financials-view.ts`
-projection (reusing the `src/lib/money.ts` helpers already added in Common Work C), and replace
-the `ComingSoon` `/{season}/financials` page with the season summary, pot detail, and the full
-chronological ledger ([spec 09 §9.3](../specs/09-Financials.md#93-public-financial-views)) — with
-provenance and projected/final labels. No engine change should be needed.
+Take **Feature 6 — Player Profiles** ([spec 08](../specs/08-Feature-Player-Profiles.md)) into the
+full spec-driven workflow. It is the **last product feature** and aggregates all five prior views —
+standings/Championship rank (Feature 1), rounds & ratings (Feature 2), OLP (Feature 3), the points
+breakdown / score sheet (Feature 4), and the per-holder money picture (Feature 5) — into one
+per-holder page, so it is built on top of read-model views that now all exist. Expect it to be
+largely a **read-only projection/aggregation** (like Features 1–5): a per-holder `players/<slug>`
+read-model view (or a page that composes the existing per-feature views by holder), pure
+`src/lib` projection helpers, and the profile page replacing today's `players/search` placeholder —
+with the standard freshness/projected-final treatment and deep-linkable holder slugs. Confirm
+during Specify whether any holder-scoped slice of the money/OLP views needs adding to `buildViews`.
+After Feature 6, only **Common Work D — Hardening & launch** remains.
 
-_Common Work A/B/C and Features 1–4 completed — see the ✅ markers above._
+_Common Work A/B/C and Features 1–5 completed — see the ✅ markers above._

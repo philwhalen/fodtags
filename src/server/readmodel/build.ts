@@ -9,6 +9,7 @@ import { listHolders } from "@server/db/repositories/tagHolders";
 import { loadSeasonSnapshot } from "@server/db/repositories/seasonSnapshot";
 import type {
   Pool,
+  PublicFinancialsPayload,
   PublicOlpPayload,
   PublicRoundsPayload,
   PublicScoreSheetPayload,
@@ -16,6 +17,7 @@ import type {
   SubLeagueType,
   SubLeagueWindow,
 } from "@/lib";
+import { buildFinancialsView } from "@server/readmodel/financials-build";
 import { buildRoundsView } from "@server/readmodel/rounds-build";
 import { buildScoreSheetViews } from "@server/readmodel/score-sheet-build";
 
@@ -84,7 +86,8 @@ export interface ViewRow {
     | SubLeagueMetaPayload
     | PublicRoundsPayload
     | PublicOlpPayload
-    | PublicScoreSheetPayload;
+    | PublicScoreSheetPayload
+    | PublicFinancialsPayload;
 }
 
 function toStandingsRows(
@@ -118,10 +121,10 @@ function isViewStale(seasonYear: number, subLeagueType?: SubLeagueType): boolean
  * Load inputs (repositories only — no PDGA, no direct DB writes here), run
  * the PURE `computeSeason` engine once, and shape the result into view
  * rows keyed by `viewKey`: Championship + sub-league standings (Spec 04
- * §4.1/§4.3/§4.5), OLP (Spec 06), rounds (Spec 05), and score-sheet (Spec
- * 07) views. Skins view shapes are intentionally NOT built here; they
- * arrive with their own feature on top of the `skins` field `computeSeason`
- * already produces.
+ * §4.1/§4.3/§4.5), OLP (Spec 06), rounds (Spec 05), score-sheet (Spec 07),
+ * and financials (Spec 09) views. Skins view shapes are intentionally NOT
+ * built here; they arrive with their own feature on top of the `skins`
+ * field `computeSeason` already produces.
  */
 export function buildViews(seasonYear: number): ViewRow[] {
   const snapshot = loadSeasonSnapshot(seasonYear);
@@ -202,6 +205,13 @@ export function buildViews(seasonYear: number): ViewRow[] {
   views.push(
     ...buildScoreSheetViews(seasonYear, results, nameById, snapshot.tournamentSourceCount, updatedAt, pendingReview),
   );
+
+  // Financials view (Spec 09 §9.3; plans financials/02-readmodel-build.md):
+  // a read-only projection of `results.financials` (already computed by the
+  // pure engine above), wrapped with the same shared `updatedAt`/
+  // `pendingReview` and a season-wide staleness signal — financials spans
+  // every source, like Championship, so it isn't narrowed to one sub-league.
+  views.push(buildFinancialsView(seasonYear, results, updatedAt, isViewStale(seasonYear), pendingReview));
 
   // `sub-leagues` meta view (Spec 04 §4.3/§4.5 boundary decision): sourced
   // from the snapshot already loaded above — no separate `event_sources`

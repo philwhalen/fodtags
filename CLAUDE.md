@@ -26,6 +26,8 @@ The four stages, each with a **hard stop** for review:
 
 3. **Implement & test.** Execute the master plan, writing and running tests per its checklist. Keep the master plan updated with progress notes as you go — especially any deviations or on-the-fly adjustments from the approved plan.
 
+   **Model selection for sub-plan implementation.** Sub-plans are deliberately small, self-contained, and well-specified — so **prefer a cheaper model to implement them**: in Claude Code, spawn **Sonnet** sub-agents (one per sub-plan); in Cursor, use **Composer 2.5**. Reserve the more expensive orchestrating model (Opus) for planning, cross-chunk judgment, verification between chunks, and reconciling deviations. Still **only spawn sub-agents when the user has asked for it** (per stage 2); when spawning is authorized, default to the cheaper model, **test and verify between each sub-plan** at the orchestrating level, and **record the model/cost basis** used for each chunk in the master plan's token/cost accounting.
+
 4. **User acceptance.** The user tests the feature and either iterates or accepts. **On acceptance:** **archive the master plan** — move `plans/<feature>/00-master.md` (with its token/cost accounting intact) into `plans/completed/` — then **delete the feature's sub-plans** (the ephemeral `plans/<feature>/NN-*.md` files and the now-empty `plans/<feature>/` directory), and commit the feature. Do not commit before acceptance.
 
 ## The specs (read these first)

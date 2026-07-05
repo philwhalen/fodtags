@@ -4,7 +4,7 @@
 
 ## Purpose
 
-The league chose **full financial transparency** ([Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)): every dollar in and out is public. This spec defines the money model, the public financial views, and how balances are computed from entry counts + admin inputs. Financial figures cross-link from the OLP ([Spec 06](./06-Feature-OLP-Pot.md)) and score-sheet ([Spec 07](./07-Feature-Pool-Score-Sheets.md)) pages.
+The league chose **full financial transparency** ([Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)): every dollar in and out is public. This spec defines the money model, the public financial views, and how balances are computed from entry counts + admin inputs. The three public views live on one scrolling page ([§9.3](#93-public-financial-views)), and financial figures cross-link **both ways** with the OLP ([Spec 06 §6.3](./06-Feature-OLP-Pot.md#63-payouts--pot)) and score-sheet ([Spec 07 §7.4](./07-Feature-Pool-Score-Sheets.md#74-relationship-to-the-spreadsheets-score-sheet)) pages.
 
 ## 9.1 Money model (from the rules doc)
 
@@ -57,17 +57,23 @@ All money is held in **integer cents**. Every $6 component is a whole number of 
 
 ## 9.3 Public financial views
 
-1. **Season financial summary** — the headline **fund balances** plus **total club cash**: Expense Reserves, Ace pot, OLP pot (per sub-league), Skins purse (per pool), and totals for tag sales and paid entries. Each balance is labeled **projected** (season in progress) or **final**, shows a **last-updated** timestamp, and offers a "how this is calculated" disclosure.
-2. **Pots detail**
-   - **Skins**: per pool — current accumulated purse and (once played) the season-end payout; before then the purse shows as projected.
-   - **OLP**: per sub-league pot and projected/final 50-30-20 payouts (mirrors [Spec 06](./06-Feature-OLP-Pot.md)).
-   - **Ace pot**: current balance, opening carryover, the $1-per-ace-entry contribution rate, and any recorded wins.
-3. **Full ledger** — a chronological, public record of every inflow (tag sales, per-night entry splits, per-night ace contributions) and outflow (OLP payouts, the season-end skins payout, ace wins, expenses), each with a **running total-club-cash balance**. This is a launch requirement. Default granularity is **one row per League Night, expandable to its splits** (skins A, skins B, OLP, reserves, ace contribution). Opening balances appear as the first dated rows. Each entry links back to its source (a League Night, a tag-sale batch, or a recorded payout/expense).
+All three views live on a **single scrolling page** at **`/{season}/financials`** (the top-level nav target), stacked in this order with in-page anchor links between them: **Season summary** (`#summary`) → **Pots detail** (`#pots`) → **Full ledger** (`#ledger`). There are no sub-routes; the page is a **read-only projection** of the engine's `computeSeason().financials` output (`SeasonFinancials`: fund balances, `totalCashCents`, the chronological `ledger`, `totals`, `skinsPaidOut`, `projected`), assembled in `buildViews` into a `financials` read-model view. Like every public page it reads only from the read model and never recomputes.
+
+1. **Season financial summary** (`#summary`) — the headline **fund balances** plus **total club cash**: Expense Reserves, Ace pot, OLP pot (per sub-league), Skins purse (per pool), and totals for tag sales, paid entries, and ace entries. Each balance is labeled **projected** (season in progress) or **final** (§9.4), shows a **last-updated** timestamp (the read-model publish time), and offers a "how this is calculated" disclosure that states the per-entry $6 split (280¢ skins / 100¢ OLP / 220¢ reserves), the $1-per-ace-entry and $20-per-tag inflows, and the invariant that **total club cash = the sum of all fund balances**.
+2. **Pots detail** (`#pots`)
+   - **Skins** (`#pots-skins`): per pool — current accumulated purse and (once played) the season-end payout; before then the purse shows as projected. This is the target of the score-sheet page's skins cross-link ([Spec 07 §7.4](./07-Feature-Pool-Score-Sheets.md#74-relationship-to-the-spreadsheets-score-sheet)).
+   - **OLP** (`#pots-olp`): per sub-league pot and projected/final 50-30-20 payouts (mirrors [Spec 06](./06-Feature-OLP-Pot.md)). This is the target of the OLP page's pot cross-link ([Spec 06 §6.3](./06-Feature-OLP-Pot.md#63-payouts--pot)).
+   - **Ace pot** (`#pots-ace`): current balance, opening carryover, the $1-per-ace-entry contribution rate, and any recorded wins.
+3. **Full ledger** (`#ledger`) — a chronological, public record of every inflow (opening balances, tag sales, per-night entry splits, per-night ace contributions) and outflow (OLP payouts, the season-end skins payout, ace wins, expenses, signed adjustments), each with a **running total-club-cash balance**. This is a launch requirement. The whole season fits on one page — **no pagination and no filtering at launch**. Ordering is by ET date, then a stable per-kind tie-break (as the engine emits it). Default granularity is **one row per League Night, collapsed, expandable in place to its splits** (skins A, skins B, OLP, reserves, and — when present — the ace contribution); non-night rows render as single lines. Opening balances appear as the first dated rows (`{season}-01-01`).
+   - **Row source links (expand-in-place, link only where a public page exists):** a **League Night** row links to that sub-league's leaderboard ([Spec 04](./04-Feature-Leaderboards.md)) for context in addition to expanding its splits; an **OLP payout** row links to the OLP page ([Spec 06](./06-Feature-OLP-Pot.md)); a **skins payout** row links to that pool's score sheet ([Spec 07](./07-Feature-Pool-Score-Sheets.md)). **Tag-sale, expense, ace-win, adjustment, and opening** rows have no public destination and show their source detail (batch count, expense category + description, payout note, adjustment reason) inline only.
 
 ## 9.4 Correctness & display
 
 - Money is stored in **cents** and displayed in dollars; the only rounding is the per-night Pool A/B skins split ([§9.2.2](#922-rounding)), shown consistently.
-- Every balance shows its **last-updated** timestamp and whether it's **projected** (season in progress) or **final**. OLP per sub-league goes **final** when that sub-league is marked complete ([Spec 10 §10.3](./10-Admin-Console.md#103-pdga-event-configuration)); skins go final when the season-end payout is recorded.
+- Every balance shows its **last-updated** timestamp and whether it's **projected** (season in progress) or **final**, applied **per fund**:
+  - **OLP** per sub-league goes **final** when that sub-league is marked complete ([Spec 10 §10.3](./10-Admin-Console.md#103-pdga-event-configuration)); otherwise projected. This is the `subLeagueComplete` flag on `SeasonFinancials`.
+  - **Skins** per pool goes **final** when that pool's season-end payout is recorded (the `skinsPaidOut` flag); otherwise projected.
+  - **Expense Reserves**, the **Ace pot**, and the **total club cash** are **projected** while any sub-league is still in progress (the engine's `SeasonFinancials.projected`, true when any `subLeagueComplete` is false) and **final** once every sub-league is complete — they accrue all season, so no earlier "final" point exists.
 - Splits must reconcile every night: `paid entries × $6 = skins A + skins B + OLP + reserves` (exact in cents). Ace and tag-sale inflows reconcile separately. **Total club cash = sum of all fund balances** at every point in the ledger.
 
 ## Acceptance criteria
@@ -77,6 +83,7 @@ All money is held in **integer cents**. Every $6 component is a whole number of 
 - OLP pot per sub-league equals $1 × paid entries in that sub-league (± admin adjustments) and matches the payout figures on the OLP page ([Spec 06](./06-Feature-OLP-Pot.md)).
 - Ace pot = opening balance + $1 × total ace entries − recorded ace wins; a win before the recipient's tag purchase, and a non-holder win over $50, are rejected on entry.
 - The season-end skins match pays out the entire per-pool purse and zeroes it; nothing carries into the next year.
-- The public summary + pot detail + ledger render with provenance, running total-cash balance, and projected/final labels; total club cash equals the sum of fund balances.
+- The public summary + pot detail + ledger render on the single `/{season}/financials` page with provenance, running total-cash balance, and per-fund projected/final labels; total club cash equals the sum of fund balances.
+- League-night ledger rows expand in place to their splits and link to the sub-league leaderboard; OLP-payout and skins-payout rows link to the OLP and score-sheet pages respectively; tag-sale/expense/ace-win/adjustment/opening rows show source detail inline. The OLP page's pot total and each score sheet link into the corresponding pots detail (`#pots-olp` / `#pots-skins`).
 
 ← Prev: [08 — Player Profiles](./08-Feature-Player-Profiles.md) · Next: [10 — Admin Console](./10-Admin-Console.md)
