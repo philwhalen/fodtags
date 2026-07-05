@@ -4,7 +4,12 @@
 // podium fields; sub-plan 03 adds OLP/skins via the placeholder fields
 // below, so `computeSeason`'s return shape doesn't need reshaping later.
 import type { Pool } from "./pool";
-import type { EventType, SubLeagueType } from "./season-snapshot";
+import type {
+  EventType,
+  ExpenseCategory,
+  FundId,
+  SubLeagueType,
+} from "./season-snapshot";
 
 /** A ranked row in a per-pool standing (Championship, sub-league, or
  * Podium) — Spec 02 §2.6 tie-break flag included so the UI can badge
@@ -138,10 +143,70 @@ export interface PoolSkins {
   B: SkinsRow[];
 }
 
+/** Per-fund balances in integer cents (Spec 09 §9.2.1). */
+export interface FundBalancesCents {
+  reserves: number;
+  ace: number;
+  olp: Record<SubLeagueType, number>;
+  skins: Record<Pool, number>;
+}
+
+/** A single fund's signed change on a ledger entry (+ inflow / − outflow). */
+export interface FundDelta {
+  fund: FundId;
+  cents: number;
+}
+
+export type LedgerEntryKind =
+  | "opening"
+  | "league-night"
+  | "tag-sale"
+  | "olp-payout"
+  | "skins-payout"
+  | "ace-win"
+  | "expense"
+  | "adjustment";
+
+/** One chronological row in the season financial ledger (Spec 09 §9.3). */
+export interface LedgerEntry {
+  kind: LedgerEntryKind;
+  /** ET calendar date, `YYYY-MM-DD`. */
+  date: string;
+  /** `"opening"` | `"event:<id>"` | `"tag-sale:<id>"` | `"payout:<id>"` | … */
+  sourceRef: string;
+  deltas: FundDelta[];
+  /** Sum of `deltas[].cents` — the change to total club cash. */
+  netCents: number;
+  /** Total club cash after this entry. */
+  runningTotalCents: number;
+  /** League-night only — for expandable display. */
+  paidEntries?: number;
+  aceEntries?: number;
+  /** Expense description / payout note / adjustment reason. */
+  note?: string;
+  /** Expense only. */
+  category?: ExpenseCategory;
+}
+
+/** Stage H output: fund balances, ledger, and reconciliation facts (Spec 09). */
+export interface SeasonFinancials {
+  funds: FundBalancesCents;
+  /** Sum of all fund balances; equals the last ledger `runningTotalCents`. */
+  totalCashCents: number;
+  /** Chronological ledger with running total-club-cash balances. */
+  ledger: LedgerEntry[];
+  totals: { tagSales: number; paidEntries: number; aceEntries: number };
+  subLeagueComplete: Record<SubLeagueType, boolean>;
+  /** True once a season-end `SKINS` payout has been recorded for the pool. */
+  skinsPaidOut: Record<Pool, boolean>;
+  /** True while any sub-league is not yet marked complete. */
+  projected: boolean;
+}
+
 /**
  * The pure `computeSeason` engine's output — standings/points/podium
  * (sub-plan 02) plus OLP scoring/payouts and skins qualification
- * (sub-plan 03, Spec 02 §2.8–2.9).
+ * (sub-plan 03, Spec 02 §2.8–2.9) and financials (Stage H, Spec 09).
  */
 export interface SeasonResults {
   seasonYear: number;
@@ -155,4 +220,6 @@ export interface SeasonResults {
   olp: Record<SubLeagueType, OlpRow[]>;
   /** Skins qualification order per pool (Spec 02 §2.9). */
   skins: PoolSkins;
+  /** Fund balances, ledger, and reconciliation facts (Spec 09). */
+  financials: SeasonFinancials;
 }

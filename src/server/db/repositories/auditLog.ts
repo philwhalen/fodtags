@@ -2,7 +2,7 @@
 // specs/12-Architecture.md §12.1 / §12.4.
 import "server-only";
 
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@server/db/client";
 import { auditLog } from "@server/db/schema";
@@ -42,13 +42,31 @@ export function recordAudit(input: RecordAuditInput): number {
   return Number(result.lastInsertRowid);
 }
 
-/** Most recent entries first. */
-export function listAudit(seasonYear: number, limit = 50) {
-  return db
+export interface ListAuditLogOptions {
+  /** When set, only rows with this entity type are returned. */
+  entityType?: string;
+  /** When set, caps the number of rows (newest first). */
+  limit?: number;
+}
+
+/** Most recent entries first; optional entity-type filter (Spec 10 §10.1). */
+export function listAuditLog(seasonYear: number, options: ListAuditLogOptions = {}) {
+  const conditions = [eq(auditLog.seasonYear, seasonYear)];
+  if (options.entityType) {
+    conditions.push(eq(auditLog.entityType, options.entityType));
+  }
+  const base = db
     .select()
     .from(auditLog)
-    .where(eq(auditLog.seasonYear, seasonYear))
-    .orderBy(desc(auditLog.id))
-    .limit(limit)
-    .all();
+    .where(and(...conditions))
+    .orderBy(desc(auditLog.id));
+  if (options.limit !== undefined) {
+    return base.limit(options.limit).all();
+  }
+  return base.all();
+}
+
+/** Most recent entries first. */
+export function listAudit(seasonYear: number, limit = 50) {
+  return listAuditLog(seasonYear, { limit });
 }

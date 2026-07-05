@@ -105,6 +105,74 @@ export interface SeasonSnapshotEntryCount {
   paidEntries: number;
 }
 
+/** Fund identifier for ledger deltas and adjustments (Spec 09 §9.2.1). */
+export type FundId =
+  | "reserves"
+  | "ace"
+  | "olp:EARLY"
+  | "olp:MID"
+  | "olp:LATE"
+  | "skins:A"
+  | "skins:B";
+
+export type ExpenseCategory = "pdga_fees" | "trophies" | "ctp" | "contingency" | "other";
+
+/** One recorded League Night's cash facts (Spec 09 §9.2). */
+export interface SeasonSnapshotNight {
+  eventId: number;
+  subLeagueType: SubLeagueType;
+  /** ET calendar date, `YYYY-MM-DD`. */
+  eventDate: string;
+  paidEntries: number;
+  aceEntries: number;
+}
+
+export interface SeasonSnapshotTagSale {
+  id: number;
+  /** ET calendar date, `YYYY-MM-DD`. */
+  saleDate: string;
+  count: number;
+}
+
+export interface SeasonSnapshotPayout {
+  id: number;
+  kind: "OLP" | "SKINS" | "ACE";
+  /** ET calendar date, `YYYY-MM-DD`. */
+  paidDate: string;
+  amountCents: number;
+  subLeague: SubLeagueType | null;
+  pool: Pool | null;
+  recipientHolderId: number | null;
+}
+
+export interface SeasonSnapshotExpense {
+  id: number;
+  /** ET calendar date, `YYYY-MM-DD`. */
+  spentDate: string;
+  amountCents: number;
+  category: ExpenseCategory;
+  description: string;
+}
+
+export interface SeasonSnapshotAdjustment {
+  id: number;
+  fund: FundId;
+  deltaCents: number;
+  /** ET calendar date, `YYYY-MM-DD`. */
+  adjustedDate: string;
+  reason: string;
+}
+
+/** Admin-entered financial facts for the season ledger (Spec 09 §9.2). */
+export interface SeasonSnapshotFinancial {
+  openings: { aceCents: number; reservesCents: number };
+  nights: SeasonSnapshotNight[];
+  tagSales: SeasonSnapshotTagSale[];
+  payouts: SeasonSnapshotPayout[];
+  expenses: SeasonSnapshotExpense[];
+  adjustments: SeasonSnapshotAdjustment[];
+}
+
 /**
  * The pure `computeSeason` engine's entire input — a plain object with no
  * DB row types, assembled by a sub-plan-04 loader from the normalized
@@ -123,4 +191,7 @@ export interface SeasonSnapshot {
   /** Consumed by sub-plan 03 (OLP pot payout); carried through the
    * snapshot contract now so it doesn't need reshaping later. */
   entryCounts: SeasonSnapshotEntryCount[];
+  /** Admin-entered financial facts (Spec 09 §9.2). When absent, Stage H
+   * treats every slice as empty and yields zero fund balances. */
+  financial?: SeasonSnapshotFinancial;
 }

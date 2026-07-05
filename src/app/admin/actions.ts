@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import {
   AdminError,
   SEASON_YEAR,
@@ -9,23 +11,39 @@ import {
   parseTagNumber,
 } from "@server/admin/context";
 import {
+  addAdjustment,
+  addExpense,
+  addTagSale,
   cancelEvent,
   createHolder,
   createHolderForEntrant,
+  deleteAdjustment,
+  deleteExpense,
+  deletePayout,
+  deleteTagSale,
   linkEntrant,
   markNonHolder,
   markSubLeagueComplete,
+  recordPayout,
   recordPoolSwitch,
   registerEventSource,
+  setAceCount,
   setEntryCount,
   setEventSourceStale,
   setTagNotPresent,
   updateEventSource,
   updateHolderRecord,
+  upsertOpenings,
   type MutationResult,
 } from "@server/admin/mutations";
 import { requireDirectorEmail } from "@server/admin/require-director";
-import type { EventSourceType } from "@server/db/schema";
+import type {
+  EventSourceType,
+  ExpenseCategory,
+  FundId,
+  PayoutKind,
+  SubLeagueType,
+} from "@server/db/schema";
 
 export async function createHolderAction(formData: FormData): Promise<MutationResult> {
   const actorEmail = await requireDirectorEmail();
@@ -211,4 +229,211 @@ export async function markNonHolderAction(formData: FormData): Promise<MutationR
     throw new AdminError("Invalid PDGA number.");
   }
   return markNonHolder(pdgaNumber, actorEmail);
+}
+
+function parseRequiredInt(raw: string, label: string): number {
+  const value = Number.parseInt(raw, 10);
+  if (!Number.isFinite(value)) {
+    throw new AdminError(`Invalid ${label}.`);
+  }
+  return value;
+}
+
+function parsePositiveInt(raw: string, label: string): number {
+  const value = parseRequiredInt(raw, label);
+  if (value <= 0) {
+    throw new AdminError(`${label} must be positive.`);
+  }
+  return value;
+}
+
+function parseNonNegativeInt(raw: string, label: string): number {
+  const value = parseRequiredInt(raw, label);
+  if (value < 0) {
+    throw new AdminError(`${label} must be non-negative.`);
+  }
+  return value;
+}
+
+function parseCalendarDate(raw: string, label: string): string {
+  const trimmed = raw.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    throw new AdminError(`${label} must be YYYY-MM-DD.`);
+  }
+  return trimmed;
+}
+
+function parsePayoutKind(raw: string): PayoutKind {
+  if (raw === "OLP" || raw === "SKINS" || raw === "ACE") {
+    return raw;
+  }
+  throw new AdminError("Invalid payout kind.");
+}
+
+function parseSubLeague(raw: string): SubLeagueType {
+  if (raw === "EARLY" || raw === "MID" || raw === "LATE") {
+    return raw;
+  }
+  throw new AdminError("Invalid sub-league.");
+}
+
+function parseExpenseCategory(raw: string): ExpenseCategory {
+  const valid: ExpenseCategory[] = ["pdga_fees", "trophies", "ctp", "contingency", "other"];
+  if (valid.includes(raw as ExpenseCategory)) {
+    return raw as ExpenseCategory;
+  }
+  throw new AdminError("Invalid expense category.");
+}
+
+function parseFundId(raw: string): FundId {
+  const valid: FundId[] = [
+    "reserves",
+    "ace",
+    "olp:EARLY",
+    "olp:MID",
+    "olp:LATE",
+    "skins:A",
+    "skins:B",
+  ];
+  if (valid.includes(raw as FundId)) {
+    return raw as FundId;
+  }
+  throw new AdminError("Invalid fund.");
+}
+
+function revalidateFinancialAdminPaths(): void {
+  revalidatePath("/admin/financials");
+  revalidatePath("/admin/entry-counts");
+}
+
+export async function setAceCountAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const eventId = parseRequiredInt(String(formData.get("eventId") ?? ""), "event id");
+  const aceEntries = parseNonNegativeInt(String(formData.get("aceEntries") ?? ""), "Ace entries");
+  const result = await setAceCount(eventId, aceEntries, actorEmail);
+  revalidateFinancialAdminPaths();
+  return result;
+}
+
+export async function upsertOpeningsAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const result = await upsertOpenings(
+    {
+      aceOpeningCents: parseNonNegativeInt(
+        String(formData.get("aceOpeningCents") ?? ""),
+        "Ace opening balance",
+      ),
+      reservesOpeningCents: parseNonNegativeInt(
+        String(formData.get("reservesOpeningCents") ?? ""),
+        "Reserves opening balance",
+      ),
+    },
+    actorEmail,
+  );
+  revalidatePath("/admin/financials");
+  return result;
+}
+
+export async function addTagSaleAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const noteRaw = String(formData.get("note") ?? "").trim();
+  const result = await addTagSale(
+    {
+      saleDate: parseCalendarDate(String(formData.get("saleDate") ?? ""), "Sale date"),
+      count: parsePositiveInt(String(formData.get("count") ?? ""), "Tag sale count"),
+      note: noteRaw === "" ? null : noteRaw,
+    },
+    actorEmail,
+  );
+  revalidatePath("/admin/financials");
+  return result;
+}
+
+export async function deleteTagSaleAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const id = parseRequiredInt(String(formData.get("id") ?? ""), "tag sale id");
+  const result = await deleteTagSale(id, actorEmail);
+  revalidatePath("/admin/financials");
+  return result;
+}
+
+export async function recordPayoutAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const kind = parsePayoutKind(String(formData.get("kind") ?? ""));
+  const subLeagueRaw = String(formData.get("subLeague") ?? "").trim();
+  const poolRaw = String(formData.get("pool") ?? "").trim();
+  const noteRaw = String(formData.get("note") ?? "").trim();
+  const result = await recordPayout(
+    {
+      kind,
+      paidDate: parseCalendarDate(String(formData.get("paidDate") ?? ""), "Paid date"),
+      amountCents: parsePositiveInt(String(formData.get("amountCents") ?? ""), "Payout amount"),
+      subLeague: subLeagueRaw === "" ? null : parseSubLeague(subLeagueRaw),
+      pool: poolRaw === "" ? null : parsePool(poolRaw),
+      recipientHolderId: parseOptionalInt(String(formData.get("recipientHolderId") ?? "")),
+      note: noteRaw === "" ? null : noteRaw,
+    },
+    actorEmail,
+  );
+  revalidatePath("/admin/financials");
+  return result;
+}
+
+export async function deletePayoutAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const id = parseRequiredInt(String(formData.get("id") ?? ""), "payout id");
+  const result = await deletePayout(id, actorEmail);
+  revalidatePath("/admin/financials");
+  return result;
+}
+
+export async function addExpenseAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const result = await addExpense(
+    {
+      spentDate: parseCalendarDate(String(formData.get("spentDate") ?? ""), "Spent date"),
+      amountCents: parsePositiveInt(String(formData.get("amountCents") ?? ""), "Expense amount"),
+      category: parseExpenseCategory(String(formData.get("category") ?? "")),
+      description: String(formData.get("description") ?? "").trim(),
+    },
+    actorEmail,
+  );
+  revalidatePath("/admin/financials");
+  return result;
+}
+
+export async function deleteExpenseAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const id = parseRequiredInt(String(formData.get("id") ?? ""), "expense id");
+  const result = await deleteExpense(id, actorEmail);
+  revalidatePath("/admin/financials");
+  return result;
+}
+
+export async function addAdjustmentAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const deltaRaw = String(formData.get("deltaCents") ?? "");
+  const deltaCents = Number.parseInt(deltaRaw, 10);
+  if (!Number.isFinite(deltaCents) || deltaCents === 0) {
+    throw new AdminError("Adjustment amount must be non-zero.");
+  }
+  const result = await addAdjustment(
+    {
+      fund: parseFundId(String(formData.get("fund") ?? "")),
+      deltaCents,
+      adjustedDate: parseCalendarDate(String(formData.get("adjustedDate") ?? ""), "Adjusted date"),
+      reason: String(formData.get("reason") ?? "").trim(),
+    },
+    actorEmail,
+  );
+  revalidatePath("/admin/financials");
+  return result;
+}
+
+export async function deleteAdjustmentAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const id = parseRequiredInt(String(formData.get("id") ?? ""), "adjustment id");
+  const result = await deleteAdjustment(id, actorEmail);
+  revalidatePath("/admin/financials");
+  return result;
 }

@@ -18,7 +18,17 @@
 // src/server/readmodel/build.ts) until sub-plan 04 generalizes publishing.
 
 export { olpScore } from "@server/engine/olp";
+export { computeFinancials } from "@server/engine/financial";
 export { computeStandings } from "@server/engine/standings";
 export { computeSeason } from "@server/engine/season";
 export type { StandingsHolder, StandingsInput, StandingsOutput } from "@server/engine/standings";
-export type { Pool, StandingRow, OlpInput, SeasonSnapshot, SeasonResults } from "@/lib";
+export type {
+  Pool,
+  StandingRow,
+  OlpInput,
+  SeasonSnapshot,
+  SeasonResults,
+  SeasonFinancials,
+  FundBalancesCents,
+  LedgerEntry,
+} from "@/lib";

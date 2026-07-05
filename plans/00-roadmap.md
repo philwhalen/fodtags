@@ -104,12 +104,18 @@ items, a flagged projected-Podium line excluded from the total, and the caps sta
 `<details>`/`<summary>` two-level disclosure, a Pool A/B toggle, and a client-side name filter —
 engine untouched.
 
-### Common Work C — Financial engine & admin depth
-The full money model, plus the admin surface that feeds it.
-- **Financial model/engine** ([spec 09](../specs/09-Financials.md)): entry-count → full
-  split math, all pots, running balances, chronological ledger.
-- Admin financial inputs (tag sales, opening balances, actual payouts, ace/skins),
-  manual adjustments/overrides, and the deeper audit trail.
+### Common Work C — Financial engine & admin depth ✅ complete
+_Accepted and archived: [`plans/completed/common-c-00-master.md`](./completed/common-c-00-master.md) (token/cost accounting intact)._
+
+The full money model, plus the admin surface that feeds it. Delivered as an engine +
+admin + normalized-store extension (not a read-only projection): five financial tables
+(`financial_openings`, `tag_sales`, `payouts`, `expenses`, `financial_adjustments`) plus an
+`ace_entries` column; a pure `computeFinancials` (cents throughout, per-night $6 splits,
+no-drift Pool A/B skins split, funds + typed ledger with running total-cash) folded into
+`computeSeason` as Stage H; the `loadSeasonSnapshot` financial slice; financial admin
+mutations/actions (opening balances, tag sales, payouts with ace-win validation, expenses,
+signed overrides, ace-entry counts); and the `/admin/financials` hub + read-only
+`/admin/audit` viewer. Public financial views were deliberately left to Feature 5.
 
 ### Feature 5 — Financials  ([spec 09](../specs/09-Financials.md))
 Public transparency: season summary, pot detail, full chronological ledger.
@@ -124,13 +130,14 @@ Aggregates all five prior views → built last.
 
 ## Next planning pass
 
-Take **Common Work C — Financial engine & admin depth** into the full spec-driven workflow:
-confirm/expand [spec 09](../specs/09-Financials.md) (entry-count → full split math, all pots,
-running balances, chronological ledger) plus the admin inputs that feed it (tag sales, opening
-balances, actual payouts, ace/skins, manual adjustments/overrides, deeper audit trail), then
-produce `plans/financials-engine/00-master.md` + sub-plans at implementation granularity. Unlike
-the view features, this block adds real computation and admin data-entry, so it is **not** a pure
-read-only projection — it extends the engine/financial model and the normalized store. It unblocks
-**Feature 5 — Financials** (the public transparency view over that model).
+Take **Feature 5 — Financials** into the full spec-driven workflow: it is now unblocked by
+Common Work C, which shipped the financial engine (`computeSeason().financials`: fund balances
++ typed ledger with running total-cash), the normalized financial store, and the admin
+data-entry. Feature 5 is a **read-only projection** over that engine output (like Features 1–4):
+build the `financials/*` read-model views in `buildViews`, a pure `src/lib/financials-view.ts`
+projection (reusing the `src/lib/money.ts` helpers already added in Common Work C), and replace
+the `ComingSoon` `/{season}/financials` page with the season summary, pot detail, and the full
+chronological ledger ([spec 09 §9.3](../specs/09-Financials.md#93-public-financial-views)) — with
+provenance and projected/final labels. No engine change should be needed.
 
-_Common Work A/B and Features 1–4 completed — see the ✅ markers above._
+_Common Work A/B/C and Features 1–4 completed — see the ✅ markers above._

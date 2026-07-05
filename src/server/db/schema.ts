@@ -291,11 +291,123 @@ export const entryCounts = sqliteTable(
       .notNull()
       .references(() => events.id),
     paidEntries: integer("paid_entries").notNull(),
+    /** $1 ace-pot buy-in count per League Night (Spec 09 §9.1/§9.2). */
+    aceEntries: integer("ace_entries").notNull().default(0),
   },
   (table) => [
     uniqueIndex("entry_counts_event_id_idx").on(table.eventId),
     index("entry_counts_season_year_idx").on(table.seasonYear),
   ],
+);
+
+/** Sub-league identifier for OLP payouts and adjustments. */
+export const subLeagueTypeEnum = ["EARLY", "MID", "LATE"] as const;
+export type SubLeagueType = (typeof subLeagueTypeEnum)[number];
+
+/** One row per season: carried-over ace + expense reserves (Spec 09 §9.2). */
+export const financialOpenings = sqliteTable("financial_openings", {
+  seasonYear: integer("season_year")
+    .primaryKey()
+    .references(() => seasons.year),
+  aceOpeningCents: integer("ace_opening_cents").notNull().default(0),
+  reservesOpeningCents: integer("reserves_opening_cents").notNull().default(0),
+});
+
+/** Dated tag-sale batches — $20 each → reserves (Spec 09 §9.2). */
+export const tagSales = sqliteTable(
+  "tag_sales",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    /** ET calendar date, `YYYY-MM-DD`. */
+    saleDate: text("sale_date").notNull(),
+    count: integer("count").notNull(),
+    note: text("note"),
+  },
+  (table) => [index("tag_sales_season_year_idx").on(table.seasonYear)],
+);
+
+/** Recorded outflows: OLP, skins, ace wins (Spec 09 §9.2/§9.3). */
+export const payoutKindEnum = ["OLP", "SKINS", "ACE"] as const;
+export type PayoutKind = (typeof payoutKindEnum)[number];
+
+export const payouts = sqliteTable(
+  "payouts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    kind: text("kind", { enum: payoutKindEnum }).notNull(),
+    /** ET calendar date, `YYYY-MM-DD`. */
+    paidDate: text("paid_date").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    /** OLP payouts only. */
+    subLeague: text("sub_league", { enum: subLeagueTypeEnum }),
+    /** Skins payouts only — see `poolEnum`. */
+    pool: text("pool", { enum: poolEnum }),
+    /** Holder recipient; null = non-holder (ace wins). */
+    recipientHolderId: integer("recipient_holder_id").references(() => tagHolders.id),
+    note: text("note"),
+  },
+  (table) => [index("payouts_season_year_idx").on(table.seasonYear)],
+);
+
+/** Expense line items against reserves (Spec 09 §9.2). */
+export const expenseCategoryEnum = [
+  "pdga_fees",
+  "trophies",
+  "ctp",
+  "contingency",
+  "other",
+] as const;
+export type ExpenseCategory = (typeof expenseCategoryEnum)[number];
+
+export const expenses = sqliteTable(
+  "expenses",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    /** ET calendar date, `YYYY-MM-DD`. */
+    spentDate: text("spent_date").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    category: text("category", { enum: expenseCategoryEnum }).notNull(),
+    description: text("description").notNull(),
+  },
+  (table) => [index("expenses_season_year_idx").on(table.seasonYear)],
+);
+
+/** Signed balance overrides with reason (Spec 09 §9.2, Spec 10 §10.6). */
+export const fundIdEnum = [
+  "reserves",
+  "ace",
+  "olp:EARLY",
+  "olp:MID",
+  "olp:LATE",
+  "skins:A",
+  "skins:B",
+] as const;
+export type FundId = (typeof fundIdEnum)[number];
+
+export const financialAdjustments = sqliteTable(
+  "financial_adjustments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    fund: text("fund", { enum: fundIdEnum }).notNull(),
+    /** Signed cents — positive increases the fund, negative decreases. */
+    deltaCents: integer("delta_cents").notNull(),
+    /** ET calendar date, `YYYY-MM-DD`. */
+    adjustedDate: text("adjusted_date").notNull(),
+    reason: text("reason").notNull(),
+  },
+  (table) => [index("financial_adjustments_season_year_idx").on(table.seasonYear)],
 );
 
 /** Admin allowlist: email, added-by, added-at, active. */

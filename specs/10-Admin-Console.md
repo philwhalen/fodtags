@@ -9,7 +9,8 @@ The private, authenticated area where league directors supply the data PDGA can'
 ## 10.1 Access & audit
 
 - **Google sign-in gated by a director email allowlist** (small number of directors). No public writes anywhere. Because auth carries a verified identity, every change is attributable to a named director.
-- **Every admin change is audited** (who, what, when, before/after). Since the app "computes everything," an override must be attributable and reversible.
+- **Every admin change is audited** (who, what, when, before/after). Since the app "computes everything," an override must be attributable and reversible. This applies in full to **financial writes** (entry counts, ace counts, tag sales, opening balances, payouts, expenses, balance overrides).
+- A read-only **audit-log view** lets directors browse and filter this history — the reversibility record for computed overrides.
 - Admin changes trigger (or are picked up by the next) recompute.
 
 ## 10.2 Roster & tag management
@@ -42,10 +43,14 @@ The private, authenticated area where league directors supply the data PDGA can'
 
 ## 10.6 Financial inputs
 
-Per [Spec 09 §9.2](./09-Financials.md#92-whats-computed-vs-entered):
-- Per-League-Night **entry counts** (recorded each night — the cash source of truth, not derived from PDGA), tag sales, opening balances (carried ace pot / reserves).
-- Record **actual payouts** (skins claimed, OLP paid), ace-pot wins, skins carried.
-- Override any derived balance with a reason.
+Per [Spec 09 §9.2](./09-Financials.md#92-whats-computed-vs-entered) — the director records real-world cash facts; the app computes the splits and balances:
+- Per-League-Night **paid entry count** (the cash source of truth, not derived from PDGA presence).
+- Per-League-Night **ace-pot entry count** — the number of $1 ace buy-ins that night, entered **separately** from paid entries.
+- **Tag sales** as dated batches (count + date) → $20 each into Expense Reserves.
+- **2026 opening balances**: carried-over **Ace pot** and **Expense Reserves**.
+- **Actual payouts**: OLP paid (per sub-league), the **season-end skins payout** (per pool, whole purse then zeroed), and **ace-pot wins**. On an ace win the console enforces the rules — **non-holder wins capped at $50** and **no win before the recipient's tag purchase** ([Spec 09 §9.1](./09-Financials.md#91-money-model-from-the-rules-doc)).
+- **Expenses** against Expense Reserves as line items: amount, date, category (PDGA fees / trophies / CTP / contingency / other), description.
+- **Override** any derived balance with a required reason (audited).
 
 ## 10.7 Ingestion control
 
@@ -64,7 +69,8 @@ Per [Spec 09 §9.2](./09-Financials.md#92-whats-computed-vs-entered):
 - A director can register 3 sub-league events + tournaments, build the roster with tag numbers/pools/PDGA#s, resolve unmatched players, and see correct public standings after a refresh.
 - Cancelling a League Night zeroes its points everywhere including OLP counts.
 - A pool switch forfeits prior points and is reflected after recompute.
-- Every override is audited and shows provenance on the public side where relevant.
+- Recording a night's paid + ace entry counts, tag sales, opening balances, payouts, and expenses produces the correct fund balances and ledger ([Spec 09](./09-Financials.md)); an ace win that violates the $50 non-holder cap or predates the recipient's tag purchase is rejected.
+- Every override is audited, browsable in the audit-log view, and shows provenance on the public side where relevant.
 - "Refresh now" and the scheduled job produce identical results.
 
 ← Prev: [09 — Financials](./09-Financials.md) · Next: [11 — UX & Non-Functional](./11-UX-and-Nonfunctional.md)

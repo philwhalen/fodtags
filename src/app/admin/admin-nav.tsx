@@ -13,7 +13,9 @@ export async function AdminNav() {
     { href: "/admin/matches", label: `Matches (${pendingCount})` },
     { href: "/admin/events", label: "Event sources" },
     { href: "/admin/entry-counts", label: "Entry counts" },
+    { href: "/admin/financials", label: "Financials" },
     { href: "/admin/adjustments", label: "Adjustments" },
+    { href: "/admin/audit", label: "Audit" },
   ];
 
   return (

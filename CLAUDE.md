@@ -62,6 +62,25 @@ Non-negotiable boundary rules to preserve when implementing:
 
 Vitest. The **engine unit tests are the priority** — fixture in → expected out, reproducing hand calculations. Two OLP worked examples must compute exactly: `85.3 + 5 − 7 − 2 = 81.3` and `93.7 − 3.3 − 6 − 3 = 81.4` (see spec 02 §2.8). Plus a pipeline integration test: stub PDGA source → run → published read model → page renders empty roster. CI runs typecheck → lint → test → `next build`.
 
+## Model pricing reference (public API list prices, per 1M tokens)
+
+For the master-plan token/cost accounting each feature carries. Sourced from
+[Cursor Models & Pricing](https://cursor.com/docs/models-and-pricing) (recorded 2026-07-05; verify before relying on it).
+
+| Model | Input | Cache read | Output |
+|-------|-------|-----------|--------|
+| **Composer 2.5** (standard) | $0.50 | $0.20 | $2.50 |
+| **Composer 2.5 Fast** | $3.00 | — | $15.00 |
+| Composer 2 (standard) | $0.50 | $0.20 | $2.50 |
+| Composer 2 Fast | $1.50 | $0.35 | $7.50 |
+| Composer 1.5 | $3.50 | $0.35 | $17.50 |
+| Composer 1 | $1.25 | $0.125 | $10.00 |
+
+Note: Composer is Cursor-only (no standalone external API); "public pricing" = Cursor's
+per-token API rate charged against the usage pool. When a feature is implemented by
+Composer sub-agents, record the cost basis (which Composer variant) in that feature's
+master plan.
+
 ## Domain glossary (minimum to read the specs)
 
 - **Tag holder** — a league member who bought a numbered tag; low tag number breaks ties.

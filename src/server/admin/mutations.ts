@@ -9,7 +9,32 @@ import {
   poolBHighRatingWarning,
 } from "@server/admin/context";
 import { recordAudit } from "@server/db/repositories/auditLog";
-import { getEntryCount, upsertEntryCount } from "@server/db/repositories/entryCounts";
+import {
+  getEntryCount,
+  upsertAceCount,
+  upsertEntryCount,
+} from "@server/db/repositories/entryCounts";
+import {
+  deleteAdjustment as deleteAdjustmentRow,
+  getAdjustment,
+  insertAdjustment,
+} from "@server/db/repositories/financialAdjustments";
+import { getOpenings, upsertOpenings as upsertOpeningsRow } from "@server/db/repositories/financialOpenings";
+import {
+  deleteExpense as deleteExpenseRow,
+  getExpense,
+  insertExpense,
+} from "@server/db/repositories/expenses";
+import {
+  deletePayout as deletePayoutRow,
+  getPayout,
+  insertPayout,
+} from "@server/db/repositories/payouts";
+import {
+  deleteTagSale as deleteTagSaleRow,
+  getTagSale,
+  insertTagSale,
+} from "@server/db/repositories/tagSales";
 import { getEvent, updateEvent } from "@server/db/repositories/events";
 import { getResult, updateResult, setHolderIdByPdgaNumber } from "@server/db/repositories/eventResults";
 import {
@@ -27,7 +52,13 @@ import {
   updateHolder,
 } from "@server/db/repositories/tagHolders";
 import { getMatch, upsertMatch } from "@server/db/repositories/playerMatches";
-import type { Pool } from "@server/db/schema";
+import type {
+  ExpenseCategory,
+  FundId,
+  PayoutKind,
+  Pool,
+  SubLeagueType,
+} from "@server/db/schema";
 import { recompute } from "@server/readmodel/recompute";
 
 export interface MutationResult {
@@ -487,6 +518,367 @@ export async function markNonHolder(
     entityId: String(pdgaNumber),
     before,
     after,
+  });
+  return { publishedVersion };
+}
+
+// --- Financial inputs (Spec 10 §10.6) ---
+
+const CALENDAR_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function assertCalendarDate(raw: string, label = "Date"): string {
+  const trimmed = raw.trim();
+  if (!CALENDAR_DATE_RE.test(trimmed)) {
+    throw new AdminError(`${label} must be YYYY-MM-DD.`);
+  }
+  return trimmed;
+}
+
+function datePart(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+function assertExpenseCategory(category: ExpenseCategory): void {
+  const valid: ExpenseCategory[] = ["pdga_fees", "trophies", "ctp", "contingency", "other"];
+  if (!valid.includes(category)) {
+    throw new AdminError("Invalid expense category.");
+  }
+}
+
+function assertFundId(fund: FundId): void {
+  const valid: FundId[] = [
+    "reserves",
+    "ace",
+    "olp:EARLY",
+    "olp:MID",
+    "olp:LATE",
+    "skins:A",
+    "skins:B",
+  ];
+  if (!valid.includes(fund)) {
+    throw new AdminError("Invalid fund.");
+  }
+}
+
+export async function setAceCount(
+  eventId: number,
+  aceEntries: number,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  const event = getEvent(eventId);
+  if (!event) {
+    throw new AdminError("Event not found.", "not_found");
+  }
+  if (aceEntries < 0) {
+    throw new AdminError("Ace entries must be non-negative.");
+  }
+
+  const beforeRow = getEntryCount(eventId);
+  const before = beforeRow
+    ? { eventId, aceEntries: beforeRow.aceEntries }
+    : { eventId, aceEntries: 0 };
+  upsertAceCount({ seasonYear: SEASON_YEAR, eventId, aceEntries });
+  const after = { eventId, aceEntries };
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "upsert_ace",
+    entityType: "entry_count",
+    entityId: String(eventId),
+    before,
+    after,
+  });
+  return { publishedVersion };
+}
+
+export interface UpsertOpeningsInput {
+  aceOpeningCents: number;
+  reservesOpeningCents: number;
+}
+
+export async function upsertOpenings(
+  input: UpsertOpeningsInput,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  if (input.aceOpeningCents < 0 || input.reservesOpeningCents < 0) {
+    throw new AdminError("Opening balances must be non-negative.");
+  }
+
+  const before = getOpenings(SEASON_YEAR) ?? null;
+  upsertOpeningsRow({
+    seasonYear: SEASON_YEAR,
+    aceOpeningCents: input.aceOpeningCents,
+    reservesOpeningCents: input.reservesOpeningCents,
+  });
+  const after = getOpenings(SEASON_YEAR);
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "upsert",
+    entityType: "financial_openings",
+    entityId: String(SEASON_YEAR),
+    before,
+    after,
+  });
+  return { publishedVersion };
+}
+
+export interface AddTagSaleInput {
+  saleDate: string;
+  count: number;
+  note?: string | null;
+}
+
+export async function addTagSale(
+  input: AddTagSaleInput,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  if (input.count <= 0) {
+    throw new AdminError("Tag sale count must be positive.");
+  }
+  const saleDate = assertCalendarDate(input.saleDate, "Sale date");
+
+  const id = insertTagSale({
+    seasonYear: SEASON_YEAR,
+    saleDate,
+    count: input.count,
+    note: input.note ?? null,
+  });
+  const after = getTagSale(id);
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "create",
+    entityType: "tag_sale",
+    entityId: String(id),
+    after,
+  });
+  return { publishedVersion };
+}
+
+export async function deleteTagSale(id: number, actorEmail: string | null): Promise<MutationResult> {
+  assertActor(actorEmail);
+  const before = getTagSale(id);
+  if (!before) {
+    throw new AdminError("Tag sale not found.", "not_found");
+  }
+
+  deleteTagSaleRow(id);
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "delete",
+    entityType: "tag_sale",
+    entityId: String(id),
+    before,
+  });
+  return { publishedVersion };
+}
+
+export interface RecordPayoutInput {
+  kind: PayoutKind;
+  paidDate: string;
+  amountCents: number;
+  subLeague?: SubLeagueType | null;
+  pool?: Pool | null;
+  recipientHolderId?: number | null;
+  note?: string | null;
+}
+
+export async function recordPayout(
+  input: RecordPayoutInput,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  if (input.amountCents <= 0) {
+    throw new AdminError("Payout amount must be positive.");
+  }
+  const paidDate = assertCalendarDate(input.paidDate, "Paid date");
+
+  if (input.kind === "OLP" && !input.subLeague) {
+    throw new AdminError("OLP payouts require a sub-league.");
+  }
+  if (input.kind === "SKINS" && !input.pool) {
+    throw new AdminError("Skins payouts require a pool.");
+  }
+  if (input.kind === "ACE") {
+    if (input.recipientHolderId != null) {
+      const holder = getHolder(input.recipientHolderId);
+      if (!holder) {
+        throw new AdminError("Holder not found.", "not_found");
+      }
+      if (datePart(paidDate) < datePart(holder.entryDate)) {
+        throw new AdminError("No ace win before the recipient's tag purchase.");
+      }
+    } else if (input.amountCents > 5000) {
+      throw new AdminError("Non-holder ace wins are capped at $50.");
+    }
+  }
+
+  const id = insertPayout({
+    seasonYear: SEASON_YEAR,
+    kind: input.kind,
+    paidDate,
+    amountCents: input.amountCents,
+    subLeague: input.subLeague ?? null,
+    pool: input.pool ?? null,
+    recipientHolderId: input.recipientHolderId ?? null,
+    note: input.note ?? null,
+  });
+  const after = getPayout(id);
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "create",
+    entityType: "payout",
+    entityId: String(id),
+    after,
+  });
+  return { publishedVersion };
+}
+
+export async function deletePayout(id: number, actorEmail: string | null): Promise<MutationResult> {
+  assertActor(actorEmail);
+  const before = getPayout(id);
+  if (!before) {
+    throw new AdminError("Payout not found.", "not_found");
+  }
+
+  deletePayoutRow(id);
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "delete",
+    entityType: "payout",
+    entityId: String(id),
+    before,
+  });
+  return { publishedVersion };
+}
+
+export interface AddExpenseInput {
+  spentDate: string;
+  amountCents: number;
+  category: ExpenseCategory;
+  description: string;
+}
+
+export async function addExpense(
+  input: AddExpenseInput,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  if (input.amountCents <= 0) {
+    throw new AdminError("Expense amount must be positive.");
+  }
+  if (!input.description.trim()) {
+    throw new AdminError("Expense description is required.");
+  }
+  assertExpenseCategory(input.category);
+  const spentDate = assertCalendarDate(input.spentDate, "Spent date");
+
+  const id = insertExpense({
+    seasonYear: SEASON_YEAR,
+    spentDate,
+    amountCents: input.amountCents,
+    category: input.category,
+    description: input.description.trim(),
+  });
+  const after = getExpense(id);
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "create",
+    entityType: "expense",
+    entityId: String(id),
+    after,
+  });
+  return { publishedVersion };
+}
+
+export async function deleteExpense(id: number, actorEmail: string | null): Promise<MutationResult> {
+  assertActor(actorEmail);
+  const before = getExpense(id);
+  if (!before) {
+    throw new AdminError("Expense not found.", "not_found");
+  }
+
+  deleteExpenseRow(id);
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "delete",
+    entityType: "expense",
+    entityId: String(id),
+    before,
+  });
+  return { publishedVersion };
+}
+
+export interface AddAdjustmentInput {
+  fund: FundId;
+  deltaCents: number;
+  adjustedDate: string;
+  reason: string;
+}
+
+export async function addAdjustment(
+  input: AddAdjustmentInput,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  if (input.deltaCents === 0) {
+    throw new AdminError("Adjustment amount must be non-zero.");
+  }
+  if (!input.reason.trim()) {
+    throw new AdminError("Adjustment reason is required.");
+  }
+  assertFundId(input.fund);
+  const adjustedDate = assertCalendarDate(input.adjustedDate, "Adjusted date");
+
+  const id = insertAdjustment({
+    seasonYear: SEASON_YEAR,
+    fund: input.fund,
+    deltaCents: input.deltaCents,
+    adjustedDate,
+    reason: input.reason.trim(),
+  });
+  const after = getAdjustment(id);
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "create",
+    entityType: "financial_adjustment",
+    entityId: String(id),
+    after,
+  });
+  return { publishedVersion };
+}
+
+export async function deleteAdjustment(id: number, actorEmail: string | null): Promise<MutationResult> {
+  assertActor(actorEmail);
+  const before = getAdjustment(id);
+  if (!before) {
+    throw new AdminError("Adjustment not found.", "not_found");
+  }
+
+  deleteAdjustmentRow(id);
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "delete",
+    entityType: "financial_adjustment",
+    entityId: String(id),
+    before,
   });
   return { publishedVersion };
 }

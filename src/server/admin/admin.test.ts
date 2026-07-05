@@ -252,3 +252,316 @@ describe("tag-not-present adjustment", () => {
     expect(getCurrentVersion(SEASON_YEAR)).toBeGreaterThan(versionBefore);
   });
 });
+
+describe("financial admin mutations", () => {
+  let setAceCountFn: (
+    eventId: number,
+    aceEntries: number,
+    actor: string | null,
+  ) => Promise<{ publishedVersion: number }>;
+  let upsertOpeningsFn: (
+    input: { aceOpeningCents: number; reservesOpeningCents: number },
+    actor: string | null,
+  ) => Promise<{ publishedVersion: number }>;
+  let addTagSaleFn: (
+    input: { saleDate: string; count: number; note?: string | null },
+    actor: string | null,
+  ) => Promise<{ publishedVersion: number }>;
+  let recordPayoutFn: (
+    input: {
+      kind: "OLP" | "SKINS" | "ACE";
+      paidDate: string;
+      amountCents: number;
+      subLeague?: "EARLY" | "MID" | "LATE" | null;
+      pool?: "A" | "B" | null;
+      recipientHolderId?: number | null;
+    },
+    actor: string | null,
+  ) => Promise<{ publishedVersion: number }>;
+  let addExpenseFn: (
+    input: {
+      spentDate: string;
+      amountCents: number;
+      category: "pdga_fees" | "trophies" | "ctp" | "contingency" | "other";
+      description: string;
+    },
+    actor: string | null,
+  ) => Promise<{ publishedVersion: number }>;
+  let addAdjustmentFn: (
+    input: {
+      fund: "reserves" | "ace" | "olp:EARLY" | "olp:MID" | "olp:LATE" | "skins:A" | "skins:B";
+      deltaCents: number;
+      adjustedDate: string;
+      reason: string;
+    },
+    actor: string | null,
+  ) => Promise<{ publishedVersion: number }>;
+  let findHolderByTagNumber: (seasonYear: number, tagNumber: number) => { id: number; entryDate: string } | undefined;
+  let listAuditFull: (
+    seasonYear: number,
+    limit?: number,
+  ) => Array<{
+    actorEmail: string;
+    action: string;
+    entityType: string;
+    before: unknown;
+    after: unknown;
+  }>;
+
+  beforeAll(async () => {
+    const [adminMutations, tagHoldersRepo, auditRepo] = await Promise.all([
+      import("@server/admin/mutations"),
+      import("@server/db/repositories/tagHolders"),
+      import("@server/db/repositories/auditLog"),
+    ]);
+    setAceCountFn = adminMutations.setAceCount;
+    upsertOpeningsFn = adminMutations.upsertOpenings;
+    addTagSaleFn = adminMutations.addTagSale;
+    recordPayoutFn = adminMutations.recordPayout;
+    addExpenseFn = adminMutations.addExpense;
+    addAdjustmentFn = adminMutations.addAdjustment;
+    findHolderByTagNumber = tagHoldersRepo.findHolderByTagNumber;
+    listAuditFull = auditRepo.listAudit;
+  });
+
+  it("setAceCount writes audit, republishes, and bumps the ace fund", async () => {
+    const earlyNight = listEvents(SEASON_YEAR).find((e) => e.label === "Early League Night 1");
+    expect(earlyNight).toBeDefined();
+
+    const beforeAce = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials.funds.ace;
+    const versionBefore = getCurrentVersion(SEASON_YEAR)!;
+
+    await setAceCountFn(earlyNight!.id, 6, DIRECTOR);
+
+    const afterAce = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials.funds.ace;
+    expect(afterAce).toBe(beforeAce + 600);
+    expect(getCurrentVersion(SEASON_YEAR)).toBeGreaterThan(versionBefore);
+
+    const audit = listAuditFull(SEASON_YEAR, 20).find(
+      (a) => a.action === "upsert_ace" && a.entityType === "entry_count",
+    );
+    expect(audit).toMatchObject({
+      actorEmail: DIRECTOR,
+      action: "upsert_ace",
+      entityType: "entry_count",
+    });
+    expect(audit?.after).toMatchObject({ eventId: earlyNight!.id, aceEntries: 6 });
+  });
+
+  it("upsertOpenings writes audit and sets opening balances", async () => {
+    const versionBefore = getCurrentVersion(SEASON_YEAR)!;
+
+    await upsertOpeningsFn({ aceOpeningCents: 5000, reservesOpeningCents: 10000 }, DIRECTOR);
+
+    const { funds } = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials;
+    expect(funds.ace).toBeGreaterThanOrEqual(5000);
+    expect(funds.reserves).toBeGreaterThanOrEqual(10000);
+    expect(getCurrentVersion(SEASON_YEAR)).toBeGreaterThan(versionBefore);
+    expect(
+      listAuditFull(SEASON_YEAR, 20).some(
+        (a) =>
+          a.actorEmail === DIRECTOR &&
+          a.action === "upsert" &&
+          a.entityType === "financial_openings" &&
+          a.after !== null,
+      ),
+    ).toBe(true);
+  });
+
+  it("addTagSale writes audit and bumps reserves", async () => {
+    const beforeReserves = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials.funds.reserves;
+    const versionBefore = getCurrentVersion(SEASON_YEAR)!;
+
+    await addTagSaleFn({ saleDate: "2026-03-01", count: 2 }, DIRECTOR);
+
+    const afterReserves = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials.funds.reserves;
+    expect(afterReserves).toBe(beforeReserves + 4000);
+    expect(getCurrentVersion(SEASON_YEAR)).toBeGreaterThan(versionBefore);
+    expect(
+      listAuditFull(SEASON_YEAR, 20).some(
+        (a) => a.actorEmail === DIRECTOR && a.action === "create" && a.entityType === "tag_sale",
+      ),
+    ).toBe(true);
+  });
+
+  it("recordPayout(SKINS) reduces the pool purse and marks skins paid out", async () => {
+    const before = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials;
+    const poolBalance = before.funds.skins.A;
+    expect(poolBalance).toBeGreaterThan(0);
+    const versionBefore = getCurrentVersion(SEASON_YEAR)!;
+
+    await recordPayoutFn(
+      {
+        kind: "SKINS",
+        paidDate: "2026-10-01",
+        amountCents: poolBalance,
+        pool: "A",
+      },
+      DIRECTOR,
+    );
+
+    const after = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials;
+    expect(after.funds.skins.A).toBe(0);
+    expect(after.skinsPaidOut.A).toBe(true);
+    expect(after.funds.skins.A).toBeLessThan(before.funds.skins.A);
+    expect(getCurrentVersion(SEASON_YEAR)).toBeGreaterThan(versionBefore);
+    expect(
+      listAuditFull(SEASON_YEAR, 20).some(
+        (a) => a.actorEmail === DIRECTOR && a.action === "create" && a.entityType === "payout",
+      ),
+    ).toBe(true);
+  });
+
+  it("addExpense writes audit and reduces reserves", async () => {
+    const beforeReserves = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials.funds.reserves;
+    const versionBefore = getCurrentVersion(SEASON_YEAR)!;
+
+    await addExpenseFn(
+      {
+        spentDate: "2026-04-01",
+        amountCents: 1500,
+        category: "pdga_fees",
+        description: "League PDGA fees",
+      },
+      DIRECTOR,
+    );
+
+    const afterReserves = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials.funds.reserves;
+    expect(afterReserves).toBe(beforeReserves - 1500);
+    expect(getCurrentVersion(SEASON_YEAR)).toBeGreaterThan(versionBefore);
+    expect(
+      listAuditFull(SEASON_YEAR, 20).some(
+        (a) => a.actorEmail === DIRECTOR && a.action === "create" && a.entityType === "expense",
+      ),
+    ).toBe(true);
+  });
+
+  it("addAdjustment writes audit and moves the named fund", async () => {
+    const beforeAce = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials.funds.ace;
+    const versionBefore = getCurrentVersion(SEASON_YEAR)!;
+
+    await addAdjustmentFn(
+      {
+        fund: "ace",
+        deltaCents: 250,
+        adjustedDate: "2026-04-15",
+        reason: "Manual correction",
+      },
+      DIRECTOR,
+    );
+
+    const afterAce = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials.funds.ace;
+    expect(afterAce).toBe(beforeAce + 250);
+    expect(getCurrentVersion(SEASON_YEAR)).toBeGreaterThan(versionBefore);
+    expect(
+      listAuditFull(SEASON_YEAR, 20).some(
+        (a) =>
+          a.actorEmail === DIRECTOR &&
+          a.action === "create" &&
+          a.entityType === "financial_adjustment",
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects non-holder ace wins over $50", async () => {
+    const { AdminError } = await import("@server/admin/context");
+    await expect(
+      recordPayoutFn(
+        {
+          kind: "ACE",
+          paidDate: "2026-04-02",
+          amountCents: 5001,
+        },
+        DIRECTOR,
+      ),
+    ).rejects.toBeInstanceOf(AdminError);
+    await expect(
+      recordPayoutFn(
+        {
+          kind: "ACE",
+          paidDate: "2026-04-02",
+          amountCents: 5001,
+        },
+        DIRECTOR,
+      ),
+    ).rejects.toThrow(/Non-holder ace wins are capped at \$50/);
+  });
+
+  it("rejects ace wins dated before the recipient holder's tag purchase", async () => {
+    const { AdminError } = await import("@server/admin/context");
+    const holder = findHolderByTagNumber(SEASON_YEAR, 1);
+    expect(holder).toBeDefined();
+
+    await expect(
+      recordPayoutFn(
+        {
+          kind: "ACE",
+          paidDate: "2026-01-10",
+          amountCents: 3000,
+          recipientHolderId: holder!.id,
+        },
+        DIRECTOR,
+      ),
+    ).rejects.toBeInstanceOf(AdminError);
+    await expect(
+      recordPayoutFn(
+        {
+          kind: "ACE",
+          paidDate: "2026-01-10",
+          amountCents: 3000,
+          recipientHolderId: holder!.id,
+        },
+        DIRECTOR,
+      ),
+    ).rejects.toThrow(/No ace win before the recipient's tag purchase/);
+  });
+
+  it("rejects zero or negative amounts and missing kind-specific fields", async () => {
+    const { AdminError } = await import("@server/admin/context");
+
+    await expect(
+      addExpenseFn(
+        {
+          spentDate: "2026-04-01",
+          amountCents: 0,
+          category: "other",
+          description: "Invalid",
+        },
+        DIRECTOR,
+      ),
+    ).rejects.toBeInstanceOf(AdminError);
+
+    await expect(
+      recordPayoutFn(
+        {
+          kind: "OLP",
+          paidDate: "2026-05-01",
+          amountCents: -100,
+        },
+        DIRECTOR,
+      ),
+    ).rejects.toBeInstanceOf(AdminError);
+
+    await expect(
+      recordPayoutFn(
+        {
+          kind: "OLP",
+          paidDate: "2026-05-01",
+          amountCents: 1000,
+        },
+        DIRECTOR,
+      ),
+    ).rejects.toThrow(/OLP payouts require a sub-league/);
+
+    await expect(
+      recordPayoutFn(
+        {
+          kind: "SKINS",
+          paidDate: "2026-10-01",
+          amountCents: 1000,
+        },
+        DIRECTOR,
+      ),
+    ).rejects.toThrow(/Skins payouts require a pool/);
+  });
+});

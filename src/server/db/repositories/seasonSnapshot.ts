@@ -6,8 +6,13 @@ import { listEntryCounts } from "@server/db/repositories/entryCounts";
 import { listEvents } from "@server/db/repositories/events";
 import { listResultsBySeason } from "@server/db/repositories/eventResults";
 import { listSources } from "@server/db/repositories/eventSources";
+import { listAdjustments } from "@server/db/repositories/financialAdjustments";
+import { getOpenings } from "@server/db/repositories/financialOpenings";
+import { listExpenses } from "@server/db/repositories/expenses";
+import { listPayouts } from "@server/db/repositories/payouts";
 import { listSwitchesBySeason } from "@server/db/repositories/poolSwitches";
 import { listRatingsBySeason } from "@server/db/repositories/ratingsHistory";
+import { listTagSales } from "@server/db/repositories/tagSales";
 import { listHolders } from "@server/db/repositories/tagHolders";
 import type { EventSourceCategory, SeasonSnapshot, SubLeagueType } from "@/lib";
 
@@ -51,6 +56,12 @@ function isSubLeagueType(x: string): x is SubLeagueType {
  *     any, are dropped — Spec 09's `$1 x paidEntries` OLP pot is a
  *     sub-league-only concept); `computeSeason` sums them per sub-league
  *     itself, so no aggregation happens here.
+ *   - `financial` — openings, per-night paid+ace counts (with event date
+ *     and sub-league), tag sales, payouts, expenses, and adjustments from
+ *     the Common-C financial tables (Spec 09 §9.2). The coarse `entryCounts`
+ *     slice (OLP Stage F) and the granular `financial.nights` ledger slice
+ *     intentionally coexist off the same `entry_counts` table — one row per
+ *     event for the pot, richer per-night facts for money.
  */
 export function loadSeasonSnapshot(seasonYear: number): SeasonSnapshot {
   const holders = listHolders(seasonYear);
@@ -72,6 +83,36 @@ export function loadSeasonSnapshot(seasonYear: number): SeasonSnapshot {
   }
 
   const tournamentSourceCount = sources.filter((s) => s.type === "TOURNAMENT").length;
+
+  const openingsRow = getOpenings(seasonYear);
+  const tagSalesRows = listTagSales(seasonYear);
+  const payoutsRows = listPayouts(seasonYear);
+  const expensesRows = listExpenses(seasonYear);
+  const adjustmentsRows = listAdjustments(seasonYear);
+
+  const financialNights = entryCounts.flatMap((ec) => {
+    const event = eventById.get(ec.eventId);
+    if (!event) {
+      throw new Error(
+        `loadSeasonSnapshot: entry count ${ec.id} references missing event ${ec.eventId}`,
+      );
+    }
+    const source = sourceById.get(event.eventSourceId);
+    if (!source || !isSubLeagueType(source.type)) {
+      // Tournament/FOD Open entry counts aren't part of the League-Night
+      // money model (Spec 09 §9.1) — skip, mirroring the OLP aggregation.
+      return [];
+    }
+    return [
+      {
+        eventId: ec.eventId,
+        subLeagueType: source.type,
+        eventDate: event.eventDate,
+        paidEntries: ec.paidEntries,
+        aceEntries: ec.aceEntries,
+      },
+    ];
+  });
 
   return {
     seasonYear,
@@ -142,5 +183,40 @@ export function loadSeasonSnapshot(seasonYear: number): SeasonSnapshot {
       }
       return [{ subLeagueType: source.type, paidEntries: ec.paidEntries }];
     }),
+    financial: {
+      openings: {
+        aceCents: openingsRow?.aceOpeningCents ?? 0,
+        reservesCents: openingsRow?.reservesOpeningCents ?? 0,
+      },
+      nights: financialNights,
+      tagSales: tagSalesRows.map((sale) => ({
+        id: sale.id,
+        saleDate: sale.saleDate,
+        count: sale.count,
+      })),
+      payouts: payoutsRows.map((payout) => ({
+        id: payout.id,
+        kind: payout.kind,
+        paidDate: payout.paidDate,
+        amountCents: payout.amountCents,
+        subLeague: payout.subLeague,
+        pool: payout.pool,
+        recipientHolderId: payout.recipientHolderId,
+      })),
+      expenses: expensesRows.map((expense) => ({
+        id: expense.id,
+        spentDate: expense.spentDate,
+        amountCents: expense.amountCents,
+        category: expense.category,
+        description: expense.description,
+      })),
+      adjustments: adjustmentsRows.map((adjustment) => ({
+        id: adjustment.id,
+        fund: adjustment.fund,
+        deltaCents: adjustment.deltaCents,
+        adjustedDate: adjustment.adjustedDate,
+        reason: adjustment.reason,
+      })),
+    },
   };
 }

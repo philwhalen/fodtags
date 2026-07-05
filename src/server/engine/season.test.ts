@@ -749,3 +749,48 @@ describe("computeSeason — skins qualification (Spec 02 §2.9)", () => {
     expect(qualified).toEqual([2, 3, 4, 5]);
   });
 });
+
+describe("computeSeason — financials (Stage H, Spec 09)", () => {
+  it("returns coherent financials when financial is present, and zeroed financials when omitted", () => {
+    const withFinancial = computeSeason(
+      baseSnapshot({
+        entryCounts: [{ subLeagueType: "EARLY", paidEntries: 10 }],
+        financial: {
+          openings: { aceCents: 0, reservesCents: 0 },
+          nights: [
+            {
+              eventId: 1,
+              subLeagueType: "EARLY",
+              eventDate: "2026-05-01",
+              paidEntries: 10,
+              aceEntries: 6,
+            },
+          ],
+          tagSales: [],
+          payouts: [],
+          expenses: [],
+          adjustments: [],
+        },
+      }),
+    );
+
+    const sumFunds =
+      withFinancial.financials.funds.reserves +
+      withFinancial.financials.funds.ace +
+      withFinancial.financials.funds.olp.EARLY +
+      withFinancial.financials.funds.olp.MID +
+      withFinancial.financials.funds.olp.LATE +
+      withFinancial.financials.funds.skins.A +
+      withFinancial.financials.funds.skins.B;
+
+    expect(sumFunds).toBe(withFinancial.financials.totalCashCents);
+    expect(withFinancial.financials.funds.olp.EARLY).toBe(withFinancial.olpPot.EARLY * 100);
+    expect(withFinancial.financials.funds.skins.A).toBe(1867);
+    expect(withFinancial.financials.funds.skins.B).toBe(933);
+
+    const withoutFinancial = computeSeason(baseSnapshot());
+    expect(withoutFinancial.financials.totalCashCents).toBe(0);
+    expect(withoutFinancial.financials.ledger).toEqual([]);
+    expect(withoutFinancial.financials.totals.paidEntries).toBe(0);
+  });
+});

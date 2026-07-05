@@ -26,6 +26,7 @@ import type {
 } from "@/lib";
 
 import { entriesToOlpPot, largestRemainderPayout, olpScore } from "./olp";
+import { computeFinancials } from "./financial";
 
 const SUB_LEAGUE_TYPES: SubLeagueType[] = ["EARLY", "MID", "LATE"];
 const POOLS: Pool[] = ["A", "B"];
@@ -593,6 +594,18 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
     });
   }
 
+  const subLeagueComplete: Record<SubLeagueType, boolean> = {
+    EARLY: snapshot.subLeagues.find((s) => s.type === "EARLY")?.complete ?? false,
+    MID: snapshot.subLeagues.find((s) => s.type === "MID")?.complete ?? false,
+    LATE: snapshot.subLeagues.find((s) => s.type === "LATE")?.complete ?? false,
+  };
+
+  const financials = computeFinancials({
+    seasonYear: snapshot.seasonYear,
+    financial: snapshot.financial,
+    subLeagueComplete,
+  });
+
   return {
     seasonYear: snapshot.seasonYear,
     championship,
@@ -602,5 +615,6 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
     olpPot,
     olp,
     skins,
+    financials,
   };
 }

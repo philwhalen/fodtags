@@ -16,16 +16,45 @@ export interface UpsertEntryCountInput {
   seasonYear: number;
   eventId: number;
   paidEntries: number;
+  aceEntries?: number;
 }
 
-/** Upserts on `eventId` — a director can correct a night's count any time;
- * the latest write is the cash source of truth (Spec 09 §9.2). */
+export interface UpsertAceCountInput {
+  seasonYear: number;
+  eventId: number;
+  aceEntries: number;
+}
+
+/** Upserts on `eventId` — sets `paidEntries` only so ace counts are not
+ * clobbered (Spec 09 §9.2). */
 export function upsertEntryCount(input: UpsertEntryCountInput): void {
   db.insert(entryCounts)
-    .values(input)
+    .values({
+      seasonYear: input.seasonYear,
+      eventId: input.eventId,
+      paidEntries: input.paidEntries,
+      aceEntries: input.aceEntries ?? 0,
+    })
     .onConflictDoUpdate({
       target: entryCounts.eventId,
       set: { paidEntries: input.paidEntries },
+    })
+    .run();
+}
+
+/** Upserts on `eventId` — sets `aceEntries` only; inserts with
+ * `paidEntries: 0` when the row does not exist yet. */
+export function upsertAceCount(input: UpsertAceCountInput): void {
+  db.insert(entryCounts)
+    .values({
+      seasonYear: input.seasonYear,
+      eventId: input.eventId,
+      paidEntries: 0,
+      aceEntries: input.aceEntries,
+    })
+    .onConflictDoUpdate({
+      target: entryCounts.eventId,
+      set: { aceEntries: input.aceEntries },
     })
     .run();
 }

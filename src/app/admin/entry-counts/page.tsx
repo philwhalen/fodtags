@@ -6,7 +6,7 @@ import { listEvents } from "@server/db/repositories/events";
 import { listSources } from "@server/db/repositories/eventSources";
 
 import { AdminNav } from "../admin-nav";
-import { EntryCountForm } from "./entry-count-forms";
+import { AceCountForm, EntryCountForm } from "./entry-count-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,10 @@ export default async function AdminEntryCountsPage() {
       <p>
         <Link href="/admin">← Dashboard</Link>
       </p>
-      <p>Paid entry counts per League Night (feeds OLP pot).</p>
+      <p>
+        Paid entry counts per League Night (feeds OLP pot). Ace entries are the separate $1 ace-pot
+        buy-ins that night.
+      </p>
 
       <table>
         <thead>
@@ -31,7 +34,9 @@ export default async function AdminEntryCountsPage() {
             <th>Source</th>
             <th>Date</th>
             <th>Paid entries</th>
-            <th>Update</th>
+            <th>Ace entries</th>
+            <th>Update paid</th>
+            <th>Update ace</th>
           </tr>
         </thead>
         <tbody>
@@ -43,8 +48,12 @@ export default async function AdminEntryCountsPage() {
                 <td>{sourceLabel.get(event.eventSourceId) ?? event.eventSourceId}</td>
                 <td>{event.eventDate}</td>
                 <td>{count?.paidEntries ?? "—"}</td>
+                <td>{count?.aceEntries ?? "—"}</td>
                 <td>
                   <EntryCountForm eventId={event.id} current={count?.paidEntries ?? 0} />
+                </td>
+                <td>
+                  <AceCountForm eventId={event.id} current={count?.aceEntries ?? 0} />
                 </td>
               </tr>
             );
