@@ -93,8 +93,16 @@ eligible" section), an Early · Mid · Late selector with "(now)", the total-pot
 projected/final labels, a `/2026/olp` → current-sub-league redirect alias, and a client-side
 name filter — engine untouched.
 
-### Feature 4 — Pool Score Sheets  ([spec 07](../specs/07-Feature-Pool-Score-Sheets.md))
+### Feature 4 — Pool Score Sheets  ([spec 07](../specs/07-Feature-Pool-Score-Sheets.md)) ✅ complete
+_Accepted and archived: [`plans/completed/score-sheets-00-master.md`](./completed/score-sheets-00-master.md) (token/cost accounting intact)._
+
 Per-pool "show your work" breakdown; counted vs. dropped line items; stated top-N caps.
+Built as a read-only projection of the engine's existing `scoreSheet`/`championship`/`podium`
+output: per-pool `score-sheet/pool-a|b` read-model views, a pure `src/lib/score-sheet-view.ts`
+projection (counted grouped by event type with per-type subtotals, dropped-with-reason line
+items, a flagged projected-Podium line excluded from the total, and the caps statement), native
+`<details>`/`<summary>` two-level disclosure, a Pool A/B toggle, and a client-side name filter —
+engine untouched.
 
 ### Common Work C — Financial engine & admin depth
 The full money model, plus the admin surface that feeds it.
@@ -116,11 +124,13 @@ Aggregates all five prior views → built last.
 
 ## Next planning pass
 
-Take **Feature 4 — Pool Score Sheets** into the full spec-driven workflow: confirm/expand
-[spec 07](../specs/07-Feature-Pool-Score-Sheets.md) (per-pool "show your work" breakdown —
-counted vs. dropped line items, with the stated top-N caps), then produce
-`plans/score-sheets/00-master.md` + sub-plans at implementation granularity. The engine
-already emits the `scoreSheet` shape (counted/dropped line items per holder), so — like
-Features 2–3 — this is expected to be largely a read-only projection over existing output.
+Take **Common Work C — Financial engine & admin depth** into the full spec-driven workflow:
+confirm/expand [spec 09](../specs/09-Financials.md) (entry-count → full split math, all pots,
+running balances, chronological ledger) plus the admin inputs that feed it (tag sales, opening
+balances, actual payouts, ace/skins, manual adjustments/overrides, deeper audit trail), then
+produce `plans/financials-engine/00-master.md` + sub-plans at implementation granularity. Unlike
+the view features, this block adds real computation and admin data-entry, so it is **not** a pure
+read-only projection — it extends the engine/financial model and the normalized store. It unblocks
+**Feature 5 — Financials** (the public transparency view over that model).
 
-_Common Work A/B and Features 1–3 completed — see the ✅ markers above._
+_Common Work A/B and Features 1–4 completed — see the ✅ markers above._

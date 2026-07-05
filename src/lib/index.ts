@@ -124,6 +124,22 @@ export type {
 export { buildOlpLinks, projectOlp } from "./olp-view";
 export type { OlpProjection, PublicOlpPayload, PublicOlpRow } from "./olp-view";
 export {
+  buildScoreSheetLinks,
+  capLabel,
+  filterScoreSheetHolders,
+  projectScoreSheet,
+} from "./score-sheet-view";
+export type {
+  DisplayLine,
+  PublicScoreSheetHolder,
+  PublicScoreSheetPayload,
+  ScoreSheetCaps,
+  ScoreSheetHolderView,
+  ScoreSheetLineGroup,
+  ScoreSheetProjection,
+  ScoreSheetViewLine,
+} from "./score-sheet-view";
+export {
   isValidPool,
   isValidSubLeague,
   placeholderRouteHrefs,

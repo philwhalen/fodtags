@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { formatEt } from "@/lib";
 import {
+  isValidPool,
   isValidSubLeague,
   placeholderRouteHrefs,
   publicNavItems,
@@ -114,10 +115,6 @@ describe("public UI shell", () => {
   it("placeholder routes resolve (modules on disk) and are reachable from nav", () => {
     const navHrefs = new Set(publicNavItems(SEASON_YEAR).map((item) => item.href));
     const routeFiles: Record<string, string> = {
-      [`/${SEASON_YEAR}/score-sheet/pool-a`]:
-        "src/app/(public)/[season]/score-sheet/[pool]/page.tsx",
-      [`/${SEASON_YEAR}/score-sheet/pool-b`]:
-        "src/app/(public)/[season]/score-sheet/[pool]/page.tsx",
       [`/${SEASON_YEAR}/financials`]: "src/app/(public)/[season]/financials/page.tsx",
       [`/${SEASON_YEAR}/players/search`]: "src/app/(public)/[season]/players/[slug]/page.tsx",
     };
@@ -128,7 +125,7 @@ describe("public UI shell", () => {
     }
 
     for (const href of placeholderRouteHrefs(SEASON_YEAR)) {
-      expect(navHrefs.has(href) || href.includes("/score-sheet/")).toBe(true);
+      expect(navHrefs.has(href)).toBe(true);
     }
 
     expect(
@@ -137,6 +134,34 @@ describe("public UI shell", () => {
     expect(navHrefs.has(`/${SEASON_YEAR}/rounds`)).toBe(true);
     expect(navHrefs.has(`/${SEASON_YEAR}/financials`)).toBe(true);
     expect(navHrefs.has(`/${SEASON_YEAR}/players/search`)).toBe(true);
+  });
+
+  it("Score-sheet routes (real pages, not placeholders) resolve and are reachable from nav", () => {
+    const navHrefs = new Set(publicNavItems(SEASON_YEAR).map((item) => item.href));
+
+    // Nav still deep-links the Pool A score sheet (unchanged href).
+    expect(navHrefs.has(`/${SEASON_YEAR}/score-sheet/pool-a`)).toBe(true);
+
+    // No longer placeholders — neither pool may appear in the placeholder list.
+    const placeholders = placeholderRouteHrefs(SEASON_YEAR);
+    expect(
+      placeholders.some((href) => href.startsWith(`/${SEASON_YEAR}/score-sheet`)),
+    ).toBe(false);
+
+    expect(
+      fs.existsSync(
+        path.join(REPO_ROOT, "src/app/(public)/[season]/score-sheet/[pool]/page.tsx"),
+      ),
+    ).toBe(true);
+
+    // Both pool deep links: valid slugs whose published view actually resolves
+    // (the strongest available proxy for "200, not 404" without a jsdom/route
+    // harness in this repo — same as the OLP/rounds checks).
+    for (const pool of ["pool-a", "pool-b"] as const) {
+      expect(isValidPool(pool)).toBe(true);
+      const published = getPublished(SEASON_YEAR, `score-sheet/${pool}`);
+      expect(published).toBeDefined();
+    }
   });
 
   it("OLP routes (real pages, not placeholders) resolve and the alias is reachable from nav", () => {

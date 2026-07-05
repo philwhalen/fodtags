@@ -11,11 +11,13 @@ import type {
   Pool,
   PublicOlpPayload,
   PublicRoundsPayload,
+  PublicScoreSheetPayload,
   SeasonStandingRow,
   SubLeagueType,
   SubLeagueWindow,
 } from "@/lib";
 import { buildRoundsView } from "@server/readmodel/rounds-build";
+import { buildScoreSheetViews } from "@server/readmodel/score-sheet-build";
 
 const POOLS: Pool[] = ["A", "B"];
 const SUB_LEAGUE_TYPES: SubLeagueType[] = ["EARLY", "MID", "LATE"];
@@ -77,7 +79,12 @@ export interface ViewRow {
   /** e.g. `championship/pool-a`, `sub-league/mid/pool-b` (Spec 04 §4.5
    * deep-link naming), or the `sub-leagues` meta view key. */
   viewKey: string;
-  payload: StandingsViewPayload | SubLeagueMetaPayload | PublicRoundsPayload | PublicOlpPayload;
+  payload:
+    | StandingsViewPayload
+    | SubLeagueMetaPayload
+    | PublicRoundsPayload
+    | PublicOlpPayload
+    | PublicScoreSheetPayload;
 }
 
 function toStandingsRows(
@@ -109,12 +116,12 @@ function isViewStale(seasonYear: number, subLeagueType?: SubLeagueType): boolean
 
 /**
  * Load inputs (repositories only — no PDGA, no direct DB writes here), run
- * the PURE `computeSeason` engine, and shape the result into view rows
- * keyed by `viewKey`: Championship (both pools) and each sub-league (both
- * pools) — standings only (Spec 04 §4.1/§4.3/§4.5). Rounds, OLP, and
- * score-sheet view shapes are intentionally NOT built here; they arrive
- * with their own features on top of the `olp`/`skins`/`scoreSheet` fields
- * `computeSeason` already produces.
+ * the PURE `computeSeason` engine once, and shape the result into view
+ * rows keyed by `viewKey`: Championship + sub-league standings (Spec 04
+ * §4.1/§4.3/§4.5), OLP (Spec 06), rounds (Spec 05), and score-sheet (Spec
+ * 07) views. Skins view shapes are intentionally NOT built here; they
+ * arrive with their own feature on top of the `skins` field `computeSeason`
+ * already produces.
  */
 export function buildViews(seasonYear: number): ViewRow[] {
   const snapshot = loadSeasonSnapshot(seasonYear);
@@ -186,6 +193,15 @@ export function buildViews(seasonYear: number): ViewRow[] {
       },
     });
   }
+
+  // Score-sheet views (Spec 07 §7.2): one `score-sheet/pool-*` view per
+  // pool, projecting `results.scoreSheet`/`championship`/`podium` (already
+  // computed by the pure engine above) enriched with `listEvents` labels
+  // and the tournament cap. Reuses the same `updatedAt`/`pendingReview`
+  // stamped once above — no second clock read, no extra engine run.
+  views.push(
+    ...buildScoreSheetViews(seasonYear, results, nameById, snapshot.tournamentSourceCount, updatedAt, pendingReview),
+  );
 
   // `sub-leagues` meta view (Spec 04 §4.3/§4.5 boundary decision): sourced
   // from the snapshot already loaded above — no separate `event_sources`
