@@ -73,8 +73,14 @@ Delivered the interaction layer on the Common-A data path: unified view control
 (Overall Championship · Early · Mid · Late with "(now)"), pool toggle, `/sub-league`
 redirect alias to the current sub-league, and a client-side name filter.
 
-### Feature 2 — Rounds & Ratings  ([spec 05](../specs/05-Feature-Rounds-and-Ratings.md))
-All-players and per-player round tables, sub-league/event-type filters, rating trend.
+### Feature 2 — Rounds & Ratings  ([spec 05](../specs/05-Feature-Rounds-and-Ratings.md)) ✅ complete
+_Accepted and archived: [`plans/completed/rounds-and-ratings-00-master.md`](./completed/rounds-and-ratings-00-master.md) (token/cost accounting intact). Committed as `57c32bd`._
+
+All-players roster list and per-player round tables, shareable sub-league/event-type
+filters, client-side name search, present-rating display, and accessible round-rating
+sparklines. Built as a read-only projection: a new `rounds` read-model view assembled
+directly from repositories (engine untouched), with pure `src/lib` helpers carrying the
+filter/projection/trend logic.
 
 ### Feature 3 — OLP Pot  ([spec 06](../specs/06-Feature-OLP-Pot.md))
 Per-sub-league OLP standings with the four explainable components and projected payouts
@@ -103,9 +109,9 @@ Aggregates all five prior views → built last.
 
 ## Next planning pass
 
-Take **Feature 2 — Rounds & Ratings** into the full spec-driven workflow: confirm/expand
-[spec 05](../specs/05-Feature-Rounds-and-Ratings.md) (all-players and per-player round tables,
-sub-league/event-type filters, rating trend), then produce `plans/rounds-and-ratings/00-master.md`
-+ sub-plans at implementation granularity.
+Take **Feature 3 — OLP Pot** into the full spec-driven workflow: confirm/expand
+[spec 06](../specs/06-Feature-OLP-Pot.md) (per-sub-league OLP standings with the four
+explainable components and projected payouts, backed by the Common A pot-balance slice),
+then produce `plans/olp-pot/00-master.md` + sub-plans at implementation granularity.
 
-_Common Work A/B and Feature 1 completed — see the ✅ markers above._
+_Common Work A/B and Features 1–2 completed — see the ✅ markers above._
