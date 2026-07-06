@@ -130,6 +130,16 @@ real-data reconciliation fixture (`real-2026.ts` + `db:seed:real`) that reproduc
 sheet's own totals to the cent ($1,246.92 total club cash) — engine untouched. Implemented via
 Sonnet 5 sub-agents per sub-plan (CLAUDE.md Stage 3 model-selection guidance), Opus orchestrating.
 
+### Dev Spike — Local admin bypass for event-source configuration
+_Not a product feature: dev-only tooling, so implemented directly (no four-stage spec-driven workflow — CLAUDE.md "Work that does not change product behavior is done directly"). Small, time-boxed._
+
+**Motivation.** The admin console is gated behind Auth.js **Google OAuth** against the `directors` allowlist, enforced at two points: the Edge `src/middleware.ts` (`token.isDirector` on the signed JWT) and the Auth.js callbacks in `src/server/auth/index.ts`. Local dev only has **dummy Google OAuth credentials** (`.env`), so real sign-in can't complete and `/admin/*` is unreachable — which blocks configuring the three sub-league `event_sources`. Those need attention: source #1 (`104527`) is a **real, live** event but is mislabeled `EARLY` with the wrong dates/divisions (it's actually the May 21 – Jul 23 event exposing only `MA1`), and sources #2/#3 are **placeholder** IDs (`PLACEHOLDER-MID-2026` / `PLACEHOLDER-LATE-2026`) that fail every live refresh.
+
+**Scope.**
+- A **development-only** director session that bypasses Google OAuth — e.g. a credentials/dev provider or a middleware escape hatch that stamps `isDirector` — so `/admin/*` and `/api/admin/*` are reachable locally without a real Google login. Covers **both** enforcement points (middleware token check + auth callbacks).
+- **Hard guardrail:** the bypass must be **impossible outside `NODE_ENV=development`** (fail-closed; ideally also behind an explicit opt-in env flag), and adds **no public product surface** — production auth behavior is unchanged.
+- Outcome: reach `/admin/events` to register/correct the Early/Mid/Late sources with real PDGA event IDs (types, dates, divisions), then run a live "Refresh now" and verify the pipeline populates real rounds (already proven end-to-end against `104527`).
+
 ### Feature 6 — Player Profiles  ([spec 08](../specs/08-Feature-Player-Profiles.md))
 Per-holder page unifying standings, rounds/ratings, points breakdown, OLP, and money.
 Aggregates all five prior views → built last.
@@ -140,7 +150,9 @@ Aggregates all five prior views → built last.
 
 ## Next planning pass
 
-Take **Feature 6 — Player Profiles** ([spec 08](../specs/08-Feature-Player-Profiles.md)) into the
+First, the **Dev Spike — Local admin bypass** above is a quick, self-contained unblock (dev tooling, no spec-driven workflow) that can be knocked out independently — it lets the director reach `/admin/events` to fix the Early/Mid/Late event-source configuration and drive a real live refresh.
+
+Then take **Feature 6 — Player Profiles** ([spec 08](../specs/08-Feature-Player-Profiles.md)) into the
 full spec-driven workflow. It is the **last product feature** and aggregates all five prior views —
 standings/Championship rank (Feature 1), rounds & ratings (Feature 2), OLP (Feature 3), the points
 breakdown / score sheet (Feature 4), and the per-holder money picture (Feature 5) — into one
