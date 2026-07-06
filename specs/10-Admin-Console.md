@@ -13,6 +13,18 @@ The private, authenticated area where league directors supply the data PDGA can'
 - A read-only **audit-log view** lets directors browse and filter this history — the reversibility record for computed overrides.
 - Admin changes trigger (or are picked up by the next) recompute.
 
+### 10.1.1 Public entry point & session controls
+
+The admin console has no public link today; a director must know the `/admin` URL. This section makes admin access reachable — and the sign-in state legible — from the **public site header**, without adding any public write surface.
+
+- **Auth control in the header (top-right).** The public shell header ([Spec 11 §11.1](./11-UX-and-Nonfunctional.md#111-ux-requirements)) carries a small auth control in its top-right, on every public page:
+  - **Signed out (the default for all visitors):** a single **"Admin login"** button. It is intentionally visible to everyone — the private area is gated by auth, not by hiding the door.
+  - **Signed in as a director:** the button is replaced by two controls — **"Admin panel"** (navigates to the existing admin console at `/admin`) and **"Logout"** (ends the session and returns to the public site).
+- **Login flow.** "Admin login" sends the visitor to Google sign-in (the built-in Auth.js sign-in page). On success the director lands **directly in the admin console (`/admin`)** — i.e. the sign-in `callbackUrl` is `/admin`, not the page they came from. The existing `directors` **allowlist gate is unchanged**: it is the same `signIn` check that already rejects non-directors before any session exists.
+- **Rejection.** A Google account **not** on the director allowlist is denied at the allowlist gate and sees the **standard Auth.js "AccessDenied" error page**. There is no "signed-in non-director" state — a rejected user simply remains a public visitor.
+- **One unified auth control.** The admin area uses the **same** header auth control as the public site (showing "Admin panel"/"Logout" for the signed-in director) rather than a separate, differently-styled "Sign out" button. Sign-in state and the logout action look and behave identically everywhere in the app.
+- **No new authorization surface.** This is a discoverability/affordance change only. Middleware still gates `/admin/*` and `/api/admin/*`; the button merely exposes the sign-in entry point and reflects session state. A director who is already signed in and visits `/admin` directly is unaffected.
+
 ## 10.2 Roster & tag management
 
 - CRUD tag holders: name, **tag number**, **pool**, **entry date**, **PDGA number**, **rating at entry**, active flag, PDGA-membership flag.
@@ -72,5 +84,6 @@ Per [Spec 09 §9.2](./09-Financials.md#92-whats-computed-vs-entered) — the dir
 - Recording a night's paid + ace entry counts, tag sales, opening balances, payouts, and expenses produces the correct fund balances and ledger ([Spec 09](./09-Financials.md)); an ace win that violates the $50 non-holder cap or predates the recipient's tag purchase is rejected.
 - Every override is audited, browsable in the audit-log view, and shows provenance on the public side where relevant.
 - "Refresh now" and the scheduled job produce identical results.
+- From any public page, a signed-out visitor sees an **"Admin login"** button top-right; clicking it and signing in with an allowlisted Google account lands directly in `/admin`, after which every page shows **"Admin panel"** + **"Logout"** instead. A non-allowlisted Google account is denied at the allowlist gate (standard AccessDenied), and **"Logout"** returns to the public site as a signed-out visitor.
 
 ← Prev: [09 — Financials](./09-Financials.md) · Next: [11 — UX & Non-Functional](./11-UX-and-Nonfunctional.md)

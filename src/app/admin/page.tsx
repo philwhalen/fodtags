@@ -1,4 +1,3 @@
-import { auth, signOut } from "@server/auth";
 import { getCurrentVersion } from "@server/db/repositories/readModel";
 import { listRuns } from "@server/db/repositories/refreshRuns";
 
@@ -16,29 +15,17 @@ export const dynamic = "force-dynamic";
  * A server component reading directly via repositories — never leaks
  * secrets to the client, and the DB/session lookups here run in the
  * Node.js runtime (unlike `src/middleware.ts`, which cannot). Reachability
- * is already enforced by `src/middleware.ts`; `auth()` here is just to
- * display the signed-in identity.
+ * is already enforced by `src/middleware.ts`; the signed-in identity and
+ * sign-out live in the shared header auth control (`app/admin/layout.tsx`).
  */
 export default async function AdminPage() {
-  const session = await auth();
   const currentVersion = getCurrentVersion(SEASON_YEAR);
   const runs = listRuns(SEASON_YEAR, 10);
 
   return (
-    <main>
+    <>
       <h1>FOD Tags Admin</h1>
       <AdminNav />
-      <p>
-        Signed in as <strong>{session?.user?.email ?? "unknown"}</strong>
-      </p>
-      <form
-        action={async () => {
-          "use server";
-          await signOut({ redirectTo: "/" });
-        }}
-      >
-        <button type="submit">Sign out</button>
-      </form>
 
       <h2>Read model</h2>
       <p>
@@ -79,6 +66,6 @@ export default async function AdminPage() {
           </tbody>
         </table>
       )}
-    </main>
+    </>
   );
 }

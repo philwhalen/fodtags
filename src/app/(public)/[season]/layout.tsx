@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 
+import { AuthControl } from "@/components/public/AuthControl";
 import { PublicNav } from "@/components/public/PublicNav";
 import "@/components/public/public-shell.css";
 
@@ -21,6 +22,7 @@ export default async function SeasonLayout({
           <Link href={`/${season}/championship/pool-a` as Route} className="public-shell-brand-link">
             FOD Tags {season}
           </Link>
+          <AuthControl />
         </div>
         <PublicNav seasonYear={Number.isFinite(seasonYear) ? seasonYear : 2026} />
       </header>

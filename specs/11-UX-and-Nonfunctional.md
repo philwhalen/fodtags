@@ -14,6 +14,7 @@ Selected launch priorities ([Master §5](./00-Master-Spec.md#5-cross-cutting-dec
 - **PDGA-style leaderboards:** familiar ranked-table styling so PDGA Live users feel at home.
 - **Deep links:** stable, human-readable URLs for season/scope/pool/sub-league/player (see each feature spec's "Deep links" section). Shared links restore exact state.
 - **Navigation:** clear top-level nav across the four core features — Leaderboards, Rounds & Ratings, OLP, Score Sheets — plus Financials, and **Players** (roster index linking to profiles — [Spec 08 §8.3](./08-Feature-Player-Profiles.md#83-players-roster-index)).
+- **Admin auth control (top-right of the header):** an **"Admin login"** button for signed-out visitors, replaced by **"Admin panel"** + **"Logout"** once a director is signed in ([Spec 10 §10.1.1](./10-Admin-Console.md#1011-public-entry-point--session-controls)). It sits apart from the feature nav and follows the same mobile-first, one-handed placement rules as the rest of the header.
 - **Explain the number:** consistent access to "how is this calculated" disclosures, honoring the [product principle](./01-Product-Overview-and-Glossary.md#product-principles).
 - **Freshness UI:** a consistent "Updated {time} ET", **stale**, and **pending review** treatment across all views ([Spec 04 §4.4](./04-Feature-Leaderboards.md#44-states)).
 - **Empty/pre-season states:** show roster at zero rather than errors.

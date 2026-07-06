@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { formatEt } from "@/lib";
+import { authControlModel } from "@/lib/auth-control";
 import {
   isValidPool,
   isValidSubLeague,
@@ -139,6 +140,35 @@ describe("public UI shell", () => {
     expect(holders.length).toBeGreaterThan(0);
     const sample = getPublished(SEASON_YEAR, `players/${holders[0]!.slug}`);
     expect(sample).toBeDefined();
+  });
+
+  it("admin auth control: signed out shows Admin login → /admin sign-in", () => {
+    const model = authControlModel(null);
+    expect(model.mode).toBe("signed-out");
+    if (model.mode === "signed-out") {
+      expect(model.loginLabel).toBe("Admin login");
+      expect(model.loginHref).toContain("callbackUrl=/admin");
+    }
+  });
+
+  it("admin auth control: director shows Admin panel + Logout", () => {
+    const model = authControlModel({ user: { isDirector: true } });
+    expect(model.mode).toBe("director");
+    if (model.mode === "director") {
+      expect(model.panelHref).toBe("/admin");
+      expect(model.logoutLabel).toBe("Logout");
+    }
+  });
+
+  it("AuthControl component exists and is mounted in the season header", () => {
+    expect(
+      fs.existsSync(path.join(REPO_ROOT, "src/components/public/AuthControl.tsx")),
+    ).toBe(true);
+    const layout = fs.readFileSync(
+      path.join(REPO_ROOT, "src/app/(public)/[season]/layout.tsx"),
+      "utf8",
+    );
+    expect(layout).toContain("AuthControl");
   });
 
   it("core public routes resolve on disk and are reachable from nav", () => {
