@@ -65,6 +65,19 @@ const envSchema = z.object({
 
   /** Which PDGA source the ingestion pipeline uses (`stub` | `live` | `fixture`). */
   PDGA_SOURCE: z.enum(["stub", "live", "fixture"]).default("stub"),
+
+  /**
+   * DEV-ONLY opt-in: enable the credentials-based admin auth bypass that
+   * signs in as `BOOTSTRAP_DIRECTOR_EMAIL` without real Google OAuth, so
+   * `/admin/*` is reachable in local dev (the dev `.env` only has dummy
+   * Google credentials). Fail-closed: `src/server/auth/index.ts` wires the
+   * bypass provider ONLY when this is `true` AND `NODE_ENV === "development"`,
+   * so it can never be enabled in test or production builds. Defaults off.
+   */
+  DEV_AUTH_BYPASS: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 type Env = z.infer<typeof envSchema>;
@@ -76,6 +89,12 @@ interface Config extends Env {
   readonly rawDir: string;
   /** Alias for `PDGA_SOURCE` — ingestion source selector. */
   readonly pdgaSource: Env["PDGA_SOURCE"];
+  /**
+   * The single, fail-closed gate for the dev admin auth bypass: `true` only
+   * when the opt-in flag is set AND we're in development. Everywhere that
+   * enables the bypass must consult this, never `DEV_AUTH_BYPASS` alone.
+   */
+  readonly devAuthBypassEnabled: boolean;
 }
 
 function loadConfig(): Config {
@@ -95,6 +114,7 @@ function loadConfig(): Config {
     dbPath: path.join(env.DATA_DIR, "fodtags.db"),
     rawDir: path.join(env.DATA_DIR, "raw"),
     pdgaSource: env.PDGA_SOURCE,
+    devAuthBypassEnabled: env.NODE_ENV === "development" && env.DEV_AUTH_BYPASS === true,
   });
 }
 

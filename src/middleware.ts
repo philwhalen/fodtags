@@ -25,6 +25,13 @@ import { getToken } from "next-auth/jwt";
  * (sub-plan 09), and the NextAuth routes themselves (`/api/auth/...`, which
  * must stay reachable while signed out — that's how sign-in happens) are
  * never matched, so they run untouched by this middleware.
+ *
+ * Dev auth bypass (roadmap "Dev Spike — Local admin bypass"): there is
+ * deliberately NO escape hatch here. The dev bypass is a credentials provider
+ * in `src/server/auth/index.ts` that goes through the same `signIn`/`jwt`
+ * callbacks and produces a normal signed JWT carrying `isDirector`, so this
+ * check passes unchanged. Production behavior is therefore identical whether
+ * or not the (dev-only, fail-closed) bypass exists.
  */
 export async function middleware(request: NextRequest) {
   const token = await getToken({

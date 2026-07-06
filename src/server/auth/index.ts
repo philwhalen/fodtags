@@ -2,6 +2,8 @@
 import "server-only";
 
 import NextAuth, { type DefaultSession } from "next-auth";
+import type { Provider } from "@auth/core/providers";
+import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 
 import { config } from "@server/config";
@@ -30,6 +32,61 @@ declare module "next-auth/jwt" {
   }
 }
 
+/** Stable provider id for the dev bypass, referenced by the middleware note. */
+const DEV_BYPASS_PROVIDER_ID = "dev-bypass";
+
+/**
+ * Builds the provider list. Always includes real Google OAuth; conditionally
+ * appends a DEV-ONLY admin auth bypass (roadmap "Dev Spike — Local admin
+ * bypass").
+ *
+ * Local dev only has dummy Google OAuth credentials, so real sign-in can't
+ * complete and `/admin/*` is unreachable. When `config.devAuthBypassEnabled`
+ * (opt-in `DEV_AUTH_BYPASS=true` AND `NODE_ENV=development` — fail-closed in
+ * `@server/config`), a credentials provider is added so a one-click sign-in
+ * stamps a session for `BOOTSTRAP_DIRECTOR_EMAIL`.
+ *
+ * Crucially this does NOT weaken either enforcement point: the provider still
+ * routes through the same `signIn` allowlist gate (the bootstrap director is a
+ * real, seeded `directors` row) and the same `jwt`/`session` callbacks, so the
+ * resulting signed JWT carries `isDirector` exactly like a Google sign-in —
+ * which is what `src/middleware.ts` decodes. There is no separate escape hatch
+ * in the middleware and no new public surface; production wiring is unchanged.
+ */
+function buildProviders(): Provider[] {
+  const providers: Provider[] = [
+    Google({
+      clientId: config.GOOGLE_CLIENT_ID,
+      clientSecret: config.GOOGLE_CLIENT_SECRET,
+    }),
+  ];
+
+  if (config.devAuthBypassEnabled) {
+    logger.warn(
+      { event: "auth.devBypassEnabled", email: config.BOOTSTRAP_DIRECTOR_EMAIL },
+      "DEV admin auth bypass ENABLED — do not use outside local development",
+    );
+    providers.push(
+      Credentials({
+        id: DEV_BYPASS_PROVIDER_ID,
+        name: "Dev bypass (director)",
+        // No input fields: authorize ignores any submitted credentials and
+        // always resolves to the bootstrap director, so the default sign-in
+        // page renders a single "Sign in" button.
+        credentials: {},
+        authorize() {
+          return {
+            email: config.BOOTSTRAP_DIRECTOR_EMAIL,
+            name: "Dev Director",
+          };
+        },
+      }),
+    );
+  }
+
+  return providers;
+}
+
 /**
  * Auth.js (NextAuth v5) wired to the `directors` allowlist (CLAUDE.md "Auth
  * via Auth.js Google OAuth against a `directors` email allowlist";
@@ -48,12 +105,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: config.AUTH_SECRET,
   trustHost: true,
   session: { strategy: "jwt" },
-  providers: [
-    Google({
-      clientId: config.GOOGLE_CLIENT_ID,
-      clientSecret: config.GOOGLE_CLIENT_SECRET,
-    }),
-  ],
+  providers: buildProviders(),
   callbacks: {
     /**
      * THE allowlist gate (specs/12-Architecture.md §12.8; Spec 10 §10.1):
