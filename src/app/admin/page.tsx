@@ -1,7 +1,6 @@
 import { getCurrentVersion } from "@server/db/repositories/readModel";
 import { listRuns } from "@server/db/repositories/refreshRuns";
 
-import { AdminNav } from "./admin-nav";
 import { RatingsRefreshButton } from "./ratings-refresh-button";
 import { RefreshButton } from "./refresh-button";
 
@@ -24,48 +23,61 @@ export default async function AdminPage() {
 
   return (
     <>
-      <h1>FOD Tags Admin</h1>
-      <AdminNav />
+      <h1 className="admin-page-title">FOD Tags Admin</h1>
 
-      <h2>Read model</h2>
-      <p>
-        Current published version for {SEASON_YEAR}:{" "}
-        <strong>{currentVersion ?? "none published"}</strong>
-      </p>
+      <section className="admin-section">
+        <h2 className="admin-section-heading">Read model</h2>
+        <p>
+          Current published version for {SEASON_YEAR}:{" "}
+          <strong>{currentVersion ?? "none published"}</strong>
+        </p>
+      </section>
 
-      <h2>Ingestion</h2>
-      <RefreshButton />
-      <RatingsRefreshButton />
+      <section className="admin-section">
+        <h2 className="admin-section-heading">Ingestion</h2>
+        <div className="admin-actions">
+          <RefreshButton />
+          <RatingsRefreshButton />
+        </div>
+      </section>
 
-      <h2>Recent refresh runs</h2>
-      {runs.length === 0 ? (
-        <p>No refresh runs recorded yet.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Trigger</th>
-              <th>Status</th>
-              <th>Started</th>
-              <th>Ended</th>
-              <th>Error</th>
-            </tr>
-          </thead>
-          <tbody>
-            {runs.map((run) => (
-              <tr key={run.id}>
-                <td>{run.id}</td>
-                <td>{run.trigger}</td>
-                <td>{run.status}</td>
-                <td>{run.startedAt}</td>
-                <td>{run.endedAt ?? "—"}</td>
-                <td>{run.error ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <section className="admin-section">
+        <h2 className="admin-section-heading">Recent refresh runs</h2>
+        {runs.length === 0 ? (
+          <p className="admin-empty">No refresh runs recorded yet.</p>
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Trigger</th>
+                  <th>Status</th>
+                  <th>Started</th>
+                  <th>Ended</th>
+                  <th>Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {runs.map((run) => (
+                  <tr key={run.id}>
+                    <td className="admin-num">{run.id}</td>
+                    <td>{run.trigger}</td>
+                    <td>
+                      <span className="admin-status" data-status={run.status}>
+                        {run.status}
+                      </span>
+                    </td>
+                    <td>{run.startedAt}</td>
+                    <td>{run.endedAt ?? "—"}</td>
+                    <td>{run.error ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </>
   );
 }

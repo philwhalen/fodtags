@@ -4,6 +4,9 @@ import Link from "next/link";
 import { AuthControl } from "@/components/public/AuthControl";
 import "@/components/public/public-shell.css";
 
+import { AdminNav } from "./admin-nav";
+import "./admin.css";
+
 /**
  * Admin shell (Spec 10 §10.1.1 "One unified auth control").
  *
@@ -12,19 +15,27 @@ import "@/components/public/public-shell.css";
  * everywhere. Reachability is already enforced by `src/middleware.ts`, so this
  * only ever renders for an authenticated director — the `AuthControl` therefore
  * shows "Admin panel" + "Logout".
+ *
+ * The `.admin-shell` class layers the admin design tokens (`admin.css`) over the
+ * public shell, adds the "Admin" badge signal, and renders the section nav once
+ * here so it appears consistently on every admin page.
  */
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="public-shell">
+    <div className="public-shell admin-shell">
       <header className="public-shell-header">
         <div className="public-shell-brand">
           <Link href={"/admin" as Route} className="public-shell-brand-link">
             FOD Tags Admin
           </Link>
+          <span className="admin-badge">Admin</span>
           <AuthControl />
         </div>
       </header>
-      <main className="public-shell-main">{children}</main>
+      <AdminNav />
+      <main className="public-shell-main">
+        <div className="admin-page">{children}</div>
+      </main>
     </div>
   );
 }

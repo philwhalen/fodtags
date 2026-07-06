@@ -19,7 +19,7 @@ import {
 
 function Feedback({ message }: { message: string | null }) {
   if (!message) return null;
-  return <p>{message}</p>;
+  return <p className="admin-feedback admin-feedback--success">{message}</p>;
 }
 
 type Holder = {
@@ -121,30 +121,32 @@ export function OpeningsForm({
   }
 
   return (
-    <form action={handleSubmit}>
-      <label>
-        Ace opening ($){" "}
+    <form action={handleSubmit} className="admin-form">
+      <label className="admin-field">
+        Ace opening ($)
         <input
           name="aceOpeningDollars"
           type="number"
           min={0}
           step="0.01"
           defaultValue={centsToDollars(aceOpeningCents)}
-          style={{ width: "6rem" }}
+          className="admin-input admin-input--narrow"
         />
-      </label>{" "}
-      <label>
-        Reserves opening ($){" "}
+      </label>
+      <label className="admin-field">
+        Reserves opening ($)
         <input
           name="reservesOpeningDollars"
           type="number"
           min={0}
           step="0.01"
           defaultValue={centsToDollars(reservesOpeningCents)}
-          style={{ width: "6rem" }}
+          className="admin-input admin-input--narrow"
         />
-      </label>{" "}
-      <button type="submit">Save openings</button>
+      </label>
+      <button type="submit" className="admin-button admin-button--primary">
+        Save openings
+      </button>
       <Feedback message={message} />
     </form>
   );
@@ -166,17 +168,19 @@ export function AddTagSaleForm() {
   }
 
   return (
-    <form action={handleSubmit}>
-      <label>
-        Date <input name="saleDate" type="date" required />
-      </label>{" "}
-      <label>
-        Count <input name="count" type="number" min={1} required style={{ width: "4rem" }} />
-      </label>{" "}
-      <label>
-        Note <input name="note" />
-      </label>{" "}
-      <button type="submit">Add tag sale</button>
+    <form action={handleSubmit} className="admin-form">
+      <label className="admin-field">
+        Date <input name="saleDate" type="date" required className="admin-input" />
+      </label>
+      <label className="admin-field">
+        Count <input name="count" type="number" min={1} required className="admin-input admin-input--narrow" />
+      </label>
+      <label className="admin-field">
+        Note <input name="note" className="admin-input" />
+      </label>
+      <button type="submit" className="admin-button admin-button--primary">
+        Add tag sale
+      </button>
       <Feedback message={message} />
     </form>
   );
@@ -201,14 +205,18 @@ export function TagSaleRow({ sale }: { sale: TagSale }) {
     <tr>
       <td>{sale.saleDate}</td>
       <td>{sale.count}</td>
-      <td>{formatCents(sale.count * TAG_SALE_CENTS)}</td>
+      <td className="admin-num">{formatCents(sale.count * TAG_SALE_CENTS)}</td>
       <td>{sale.note ?? "—"}</td>
       <td>
-        <form action={handleDelete} style={{ display: "inline" }}>
-          <input type="hidden" name="id" value={sale.id} />
-          <button type="submit">Delete</button>
-        </form>
-        {message ? <span> {message}</span> : null}
+        <div className="admin-actions">
+          <form action={handleDelete} className="admin-form--inline">
+            <input type="hidden" name="id" value={sale.id} />
+            <button type="submit" className="admin-button admin-button--danger">
+              Delete
+            </button>
+          </form>
+          {message ? <span className="admin-feedback-inline">{message}</span> : null}
+        </div>
       </td>
     </tr>
   );
@@ -234,45 +242,57 @@ export function AddPayoutForm({ holders }: { holders: Holder[] }) {
   }
 
   return (
-    <form action={handleSubmit}>
-      <label>
-        Kind{" "}
-        <select name="kind" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+    <form action={handleSubmit} className="admin-form">
+      <label className="admin-field">
+        Kind
+        <select
+          name="kind"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as typeof kind)}
+          className="admin-select"
+        >
           <option value="OLP">OLP</option>
           <option value="SKINS">Skins</option>
           <option value="ACE">Ace</option>
         </select>
-      </label>{" "}
-      <label>
-        Paid date <input name="paidDate" type="date" required />
-      </label>{" "}
-      <label>
-        Amount ($){" "}
-        <input name="amountDollars" type="number" min={0.01} step="0.01" required style={{ width: "6rem" }} />
-      </label>{" "}
+      </label>
+      <label className="admin-field">
+        Paid date <input name="paidDate" type="date" required className="admin-input" />
+      </label>
+      <label className="admin-field">
+        Amount ($)
+        <input
+          name="amountDollars"
+          type="number"
+          min={0.01}
+          step="0.01"
+          required
+          className="admin-input admin-input--narrow"
+        />
+      </label>
       {kind === "OLP" ? (
-        <label>
-          Sub-league{" "}
-          <select name="subLeague" required>
+        <label className="admin-field">
+          Sub-league
+          <select name="subLeague" required className="admin-select">
             <option value="EARLY">EARLY</option>
             <option value="MID">MID</option>
             <option value="LATE">LATE</option>
           </select>
         </label>
-      ) : null}{" "}
+      ) : null}
       {kind === "SKINS" ? (
-        <label>
-          Pool{" "}
-          <select name="pool" required>
+        <label className="admin-field">
+          Pool
+          <select name="pool" required className="admin-select">
             <option value="A">A</option>
             <option value="B">B</option>
           </select>
         </label>
-      ) : null}{" "}
+      ) : null}
       {kind === "ACE" ? (
-        <label>
-          Recipient{" "}
-          <select name="recipientHolderId">
+        <label className="admin-field">
+          Recipient
+          <select name="recipientHolderId" className="admin-select">
             <option value="">Non-holder</option>
             {holders.map((h) => (
               <option key={h.id} value={h.id}>
@@ -281,11 +301,13 @@ export function AddPayoutForm({ holders }: { holders: Holder[] }) {
             ))}
           </select>
         </label>
-      ) : null}{" "}
-      <label>
-        Note <input name="note" />
-      </label>{" "}
-      <button type="submit">Record payout</button>
+      ) : null}
+      <label className="admin-field">
+        Note <input name="note" className="admin-input" />
+      </label>
+      <button type="submit" className="admin-button admin-button--primary">
+        Record payout
+      </button>
       <Feedback message={message} />
     </form>
   );
@@ -317,14 +339,18 @@ export function PayoutRow({
       <td>{payout.kind}</td>
       <td>{payout.paidDate}</td>
       <td>{payoutTargetLabel(payout, holderNames)}</td>
-      <td>{formatCents(payout.amountCents)}</td>
+      <td className="admin-num">{formatCents(payout.amountCents)}</td>
       <td>{payout.note ?? "—"}</td>
       <td>
-        <form action={handleDelete} style={{ display: "inline" }}>
-          <input type="hidden" name="id" value={payout.id} />
-          <button type="submit">Delete</button>
-        </form>
-        {message ? <span> {message}</span> : null}
+        <div className="admin-actions">
+          <form action={handleDelete} className="admin-form--inline">
+            <input type="hidden" name="id" value={payout.id} />
+            <button type="submit" className="admin-button admin-button--danger">
+              Delete
+            </button>
+          </form>
+          {message ? <span className="admin-feedback-inline">{message}</span> : null}
+        </div>
       </td>
     </tr>
   );
@@ -349,28 +375,37 @@ export function AddExpenseForm() {
   }
 
   return (
-    <form action={handleSubmit}>
-      <label>
-        Date <input name="spentDate" type="date" required />
-      </label>{" "}
-      <label>
-        Amount ($){" "}
-        <input name="amountDollars" type="number" min={0.01} step="0.01" required style={{ width: "6rem" }} />
-      </label>{" "}
-      <label>
-        Category{" "}
-        <select name="category" defaultValue="other">
+    <form action={handleSubmit} className="admin-form">
+      <label className="admin-field">
+        Date <input name="spentDate" type="date" required className="admin-input" />
+      </label>
+      <label className="admin-field">
+        Amount ($)
+        <input
+          name="amountDollars"
+          type="number"
+          min={0.01}
+          step="0.01"
+          required
+          className="admin-input admin-input--narrow"
+        />
+      </label>
+      <label className="admin-field">
+        Category
+        <select name="category" defaultValue="other" className="admin-select">
           {EXPENSE_CATEGORIES.map((c) => (
             <option key={c.value} value={c.value}>
               {c.label}
             </option>
           ))}
         </select>
-      </label>{" "}
-      <label>
-        Description <input name="description" required />
-      </label>{" "}
-      <button type="submit">Add expense</button>
+      </label>
+      <label className="admin-field">
+        Description <input name="description" required className="admin-input" />
+      </label>
+      <button type="submit" className="admin-button admin-button--primary">
+        Add expense
+      </button>
       <Feedback message={message} />
     </form>
   );
@@ -394,15 +429,19 @@ export function ExpenseRow({ expense }: { expense: Expense }) {
   return (
     <tr>
       <td>{expense.spentDate}</td>
-      <td>{formatCents(expense.amountCents)}</td>
+      <td className="admin-num">{formatCents(expense.amountCents)}</td>
       <td>{expense.category}</td>
       <td>{expense.description}</td>
       <td>
-        <form action={handleDelete} style={{ display: "inline" }}>
-          <input type="hidden" name="id" value={expense.id} />
-          <button type="submit">Delete</button>
-        </form>
-        {message ? <span> {message}</span> : null}
+        <div className="admin-actions">
+          <form action={handleDelete} className="admin-form--inline">
+            <input type="hidden" name="id" value={expense.id} />
+            <button type="submit" className="admin-button admin-button--danger">
+              Delete
+            </button>
+          </form>
+          {message ? <span className="admin-feedback-inline">{message}</span> : null}
+        </div>
       </td>
     </tr>
   );
@@ -427,28 +466,30 @@ export function AddAdjustmentForm() {
   }
 
   return (
-    <form action={handleSubmit}>
-      <label>
-        Fund{" "}
-        <select name="fund" defaultValue="reserves">
+    <form action={handleSubmit} className="admin-form">
+      <label className="admin-field">
+        Fund
+        <select name="fund" defaultValue="reserves" className="admin-select">
           {FUND_OPTIONS.map((f) => (
             <option key={f.value} value={f.value}>
               {f.label}
             </option>
           ))}
         </select>
-      </label>{" "}
-      <label>
-        Amount ($, signed){" "}
-        <input name="amountDollars" type="number" step="0.01" required style={{ width: "6rem" }} />
-      </label>{" "}
-      <label>
-        Date <input name="adjustedDate" type="date" required />
-      </label>{" "}
-      <label>
-        Reason <input name="reason" required />
-      </label>{" "}
-      <button type="submit">Add adjustment</button>
+      </label>
+      <label className="admin-field">
+        Amount ($, signed)
+        <input name="amountDollars" type="number" step="0.01" required className="admin-input admin-input--narrow" />
+      </label>
+      <label className="admin-field">
+        Date <input name="adjustedDate" type="date" required className="admin-input" />
+      </label>
+      <label className="admin-field">
+        Reason <input name="reason" required className="admin-input" />
+      </label>
+      <button type="submit" className="admin-button admin-button--primary">
+        Add adjustment
+      </button>
       <Feedback message={message} />
     </form>
   );
@@ -474,15 +515,19 @@ export function AdjustmentRow({ adjustment }: { adjustment: Adjustment }) {
   return (
     <tr>
       <td>{fundLabel}</td>
-      <td>{formatCents(adjustment.deltaCents)}</td>
+      <td className="admin-num">{formatCents(adjustment.deltaCents)}</td>
       <td>{adjustment.adjustedDate}</td>
       <td>{adjustment.reason}</td>
       <td>
-        <form action={handleDelete} style={{ display: "inline" }}>
-          <input type="hidden" name="id" value={adjustment.id} />
-          <button type="submit">Delete</button>
-        </form>
-        {message ? <span> {message}</span> : null}
+        <div className="admin-actions">
+          <form action={handleDelete} className="admin-form--inline">
+            <input type="hidden" name="id" value={adjustment.id} />
+            <button type="submit" className="admin-button admin-button--danger">
+              Delete
+            </button>
+          </form>
+          {message ? <span className="admin-feedback-inline">{message}</span> : null}
+        </div>
       </td>
     </tr>
   );

@@ -39,37 +39,39 @@ export function RegisterSourceForm() {
   }
 
   return (
-    <form action={handleSubmit}>
-      <label>
-        Type{" "}
-        <select name="type" defaultValue="TOURNAMENT">
+    <form action={handleSubmit} className="admin-form">
+      <label className="admin-field">
+        Type
+        <select name="type" defaultValue="TOURNAMENT" className="admin-select">
           <option value="EARLY">EARLY</option>
           <option value="MID">MID</option>
           <option value="LATE">LATE</option>
           <option value="TOURNAMENT">TOURNAMENT</option>
           <option value="FOD_OPEN">FOD_OPEN</option>
         </select>
-      </label>{" "}
-      <label>
-        Label <input name="label" required />
-      </label>{" "}
-      <label>
-        PDGA event ID <input name="pdgaEventId" required />
-      </label>{" "}
-      <label>
-        Start date <input name="startDate" type="date" />
-      </label>{" "}
-      <label>
-        End date <input name="endDate" type="date" />
-      </label>{" "}
-      <label>
-        Divisions <input name="divisions" placeholder="MPO, MA1" />
-      </label>{" "}
-      <label>
-        <input name="active" type="checkbox" defaultChecked /> Active
-      </label>{" "}
-      <button type="submit">Register</button>
-      {message ? <p>{message}</p> : null}
+      </label>
+      <label className="admin-field">
+        Label <input name="label" required className="admin-input" />
+      </label>
+      <label className="admin-field">
+        PDGA event ID <input name="pdgaEventId" required className="admin-input" />
+      </label>
+      <label className="admin-field">
+        Start date <input name="startDate" type="date" className="admin-input" />
+      </label>
+      <label className="admin-field">
+        End date <input name="endDate" type="date" className="admin-input" />
+      </label>
+      <label className="admin-field">
+        Divisions <input name="divisions" placeholder="MPO, MA1" className="admin-input" />
+      </label>
+      <label className="admin-field admin-field--check">
+        <input name="active" type="checkbox" defaultChecked className="admin-checkbox" /> Active
+      </label>
+      <button type="submit" className="admin-button admin-button--primary">
+        Register
+      </button>
+      {message ? <p className="admin-feedback admin-feedback--success">{message}</p> : null}
     </form>
   );
 }
@@ -129,33 +131,36 @@ export function SourceRow({ source }: { source: Source }) {
     return (
       <tr>
         <td colSpan={10}>
-          <form action={handleUpdate}>
+          <form action={handleUpdate} className="admin-edit-form">
             <input type="hidden" name="id" value={source.id} />
-            <label>
-              Label <input name="label" defaultValue={source.label} required />
-            </label>{" "}
-            <label>
-              PDGA event ID <input name="pdgaEventId" defaultValue={source.pdgaEventId} required />
-            </label>{" "}
-            <label>
-              Start <input name="startDate" type="date" defaultValue={source.startDate ?? ""} />
-            </label>{" "}
-            <label>
-              End <input name="endDate" type="date" defaultValue={source.endDate ?? ""} />
-            </label>{" "}
-            <label>
+            <label className="admin-field">
+              Label <input name="label" defaultValue={source.label} required className="admin-input" />
+            </label>
+            <label className="admin-field">
+              PDGA event ID{" "}
+              <input name="pdgaEventId" defaultValue={source.pdgaEventId} required className="admin-input" />
+            </label>
+            <label className="admin-field">
+              Start <input name="startDate" type="date" defaultValue={source.startDate ?? ""} className="admin-input" />
+            </label>
+            <label className="admin-field">
+              End <input name="endDate" type="date" defaultValue={source.endDate ?? ""} className="admin-input" />
+            </label>
+            <label className="admin-field">
               Divisions{" "}
-              <input name="divisions" defaultValue={divisionsString(source.divisions)} />
-            </label>{" "}
-            <label>
-              <input name="active" type="checkbox" defaultChecked={source.active} /> Active
-            </label>{" "}
-            <button type="submit">Save</button>{" "}
-            <button type="button" onClick={() => setEditing(false)}>
+              <input name="divisions" defaultValue={divisionsString(source.divisions)} className="admin-input" />
+            </label>
+            <label className="admin-field admin-field--check">
+              <input name="active" type="checkbox" defaultChecked={source.active} className="admin-checkbox" /> Active
+            </label>
+            <button type="submit" className="admin-button admin-button--primary">
+              Save
+            </button>
+            <button type="button" onClick={() => setEditing(false)} className="admin-button">
               Cancel
             </button>
           </form>
-          {message ? <p>{message}</p> : null}
+          {message ? <p className="admin-feedback admin-feedback--success">{message}</p> : null}
         </td>
       </tr>
     );
@@ -163,47 +168,69 @@ export function SourceRow({ source }: { source: Source }) {
 
   return (
     <tr>
-      <td>{source.id}</td>
+      <td className="admin-num">{source.id}</td>
       <td>{source.type}</td>
       <td>{source.label}</td>
       <td>{source.pdgaEventId}</td>
       <td>{source.startDate ?? "—"}</td>
       <td>{source.endDate ?? "—"}</td>
-      <td>{source.complete ? "yes" : "no"}</td>
-      <td>{source.active ? "yes" : "no"}</td>
+      <td>
+        <span className="admin-status" data-status={source.complete ? "yes" : "no"}>
+          {source.complete ? "yes" : "no"}
+        </span>
+      </td>
+      <td>
+        <span className="admin-status" data-status={source.active ? "yes" : "no"}>
+          {source.active ? "yes" : "no"}
+        </span>
+      </td>
       <td>
         {source.stale ? (
-          <span title={source.lastGoodAt ? `Last good: ${source.lastGoodAt}` : undefined}>
+          <span
+            className="admin-status"
+            data-status="stale"
+            title={source.lastGoodAt ? `Last good: ${source.lastGoodAt}` : undefined}
+          >
             stale
           </span>
         ) : (
-          "fresh"
+          <span className="admin-status" data-status="fresh">
+            fresh
+          </span>
         )}
       </td>
       <td>
-        <button type="button" onClick={() => setEditing(true)}>
-          Edit
-        </button>{" "}
-        {source.stale ? (
-          <form action={handleClearStale} style={{ display: "inline" }}>
-            <input type="hidden" name="id" value={source.id} />
-            <input type="hidden" name="stale" value="false" />
-            <button type="submit">Clear stale</button>
-          </form>
-        ) : (
-          <form action={handleMarkStale} style={{ display: "inline" }}>
-            <input type="hidden" name="id" value={source.id} />
-            <input type="hidden" name="stale" value="true" />
-            <button type="submit">Mark stale</button>
-          </form>
-        )}{" "}
-        {isSubLeague && !source.complete ? (
-          <form action={handleMarkComplete} style={{ display: "inline" }}>
-            <input type="hidden" name="id" value={source.id} />
-            <button type="submit">Mark complete</button>
-          </form>
-        ) : null}
-        {message ? <p>{message}</p> : null}
+        <div className="admin-actions">
+          <button type="button" onClick={() => setEditing(true)} className="admin-button">
+            Edit
+          </button>
+          {source.stale ? (
+            <form action={handleClearStale} className="admin-form--inline">
+              <input type="hidden" name="id" value={source.id} />
+              <input type="hidden" name="stale" value="false" />
+              <button type="submit" className="admin-button">
+                Clear stale
+              </button>
+            </form>
+          ) : (
+            <form action={handleMarkStale} className="admin-form--inline">
+              <input type="hidden" name="id" value={source.id} />
+              <input type="hidden" name="stale" value="true" />
+              <button type="submit" className="admin-button">
+                Mark stale
+              </button>
+            </form>
+          )}
+          {isSubLeague && !source.complete ? (
+            <form action={handleMarkComplete} className="admin-form--inline">
+              <input type="hidden" name="id" value={source.id} />
+              <button type="submit" className="admin-button">
+                Mark complete
+              </button>
+            </form>
+          ) : null}
+        </div>
+        {message ? <p className="admin-feedback admin-feedback--success">{message}</p> : null}
       </td>
     </tr>
   );

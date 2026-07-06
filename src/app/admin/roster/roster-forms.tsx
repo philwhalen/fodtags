@@ -25,8 +25,8 @@ function Feedback({ message, warning }: { message: string | null; warning?: stri
   if (!message && !warning) return null;
   return (
     <div>
-      {message ? <p>{message}</p> : null}
-      {warning ? <p style={{ color: "darkorange" }}>{warning}</p> : null}
+      {message ? <p className="admin-feedback admin-feedback--success">{message}</p> : null}
+      {warning ? <p className="admin-feedback admin-feedback--warning">{warning}</p> : null}
     </div>
   );
 }
@@ -50,36 +50,38 @@ export function CreateHolderForm() {
   }
 
   return (
-    <form action={handleSubmit}>
-      <label>
-        Name <input name="name" required />
-      </label>{" "}
-      <label>
-        Tag # <input name="tagNumber" type="number" min={1} required />
-      </label>{" "}
-      <label>
+    <form action={handleSubmit} className="admin-form">
+      <label className="admin-field">
+        Name <input name="name" required className="admin-input" />
+      </label>
+      <label className="admin-field">
+        Tag # <input name="tagNumber" type="number" min={1} required className="admin-input" />
+      </label>
+      <label className="admin-field">
         Pool{" "}
-        <select name="pool" defaultValue="A">
+        <select name="pool" defaultValue="A" className="admin-select">
           <option value="A">A</option>
           <option value="B">B</option>
         </select>
-      </label>{" "}
-      <label>
-        Entry date <input name="entryDate" type="datetime-local" required />
-      </label>{" "}
-      <label>
-        PDGA # <input name="pdgaNumber" type="number" />
-      </label>{" "}
-      <label>
-        Rating at entry <input name="ratingAtEntry" type="number" />
-      </label>{" "}
-      <label>
-        <input name="active" type="checkbox" defaultChecked /> Active
-      </label>{" "}
-      <label>
-        <input name="pdgaMembership" type="checkbox" /> PDGA member
-      </label>{" "}
-      <button type="submit">Add holder</button>
+      </label>
+      <label className="admin-field">
+        Entry date <input name="entryDate" type="datetime-local" required className="admin-input" />
+      </label>
+      <label className="admin-field">
+        PDGA # <input name="pdgaNumber" type="number" className="admin-input" />
+      </label>
+      <label className="admin-field">
+        Rating at entry <input name="ratingAtEntry" type="number" className="admin-input" />
+      </label>
+      <label className="admin-field admin-field--check">
+        <input name="active" type="checkbox" defaultChecked className="admin-checkbox" /> Active
+      </label>
+      <label className="admin-field admin-field--check">
+        <input name="pdgaMembership" type="checkbox" className="admin-checkbox" /> PDGA member
+      </label>
+      <button type="submit" className="admin-button admin-button--primary">
+        Add holder
+      </button>
       <Feedback message={message} warning={warning} />
     </form>
   );
@@ -109,40 +111,72 @@ export function HolderRow({ holder }: { holder: Holder }) {
     return (
       <tr>
         <td colSpan={10}>
-          <form action={handleUpdate}>
+          <form action={handleUpdate} className="admin-edit-form">
             <input type="hidden" name="id" value={holder.id} />
-            <label>
-              Name <input name="name" defaultValue={holder.name} required />
-            </label>{" "}
-            <label>
-              Tag # <input name="tagNumber" type="number" defaultValue={holder.tagNumber} required />
-            </label>{" "}
-            <label>
+            <label className="admin-field">
+              Name <input name="name" defaultValue={holder.name} required className="admin-input" />
+            </label>
+            <label className="admin-field">
+              Tag #{" "}
+              <input
+                name="tagNumber"
+                type="number"
+                defaultValue={holder.tagNumber}
+                required
+                className="admin-input"
+              />
+            </label>
+            <label className="admin-field">
               Pool{" "}
-              <select name="pool" defaultValue={holder.pool}>
+              <select name="pool" defaultValue={holder.pool} className="admin-select">
                 <option value="A">A</option>
                 <option value="B">B</option>
               </select>
-            </label>{" "}
-            <label>
-              Entry date <input name="entryDate" defaultValue={holder.entryDate} required />
-            </label>{" "}
-            <label>
-              PDGA # <input name="pdgaNumber" type="number" defaultValue={holder.pdgaNumber ?? ""} />
-            </label>{" "}
-            <label>
+            </label>
+            <label className="admin-field">
+              Entry date{" "}
+              <input name="entryDate" defaultValue={holder.entryDate} required className="admin-input" />
+            </label>
+            <label className="admin-field">
+              PDGA #{" "}
+              <input
+                name="pdgaNumber"
+                type="number"
+                defaultValue={holder.pdgaNumber ?? ""}
+                className="admin-input"
+              />
+            </label>
+            <label className="admin-field">
               Rating{" "}
-              <input name="ratingAtEntry" type="number" defaultValue={holder.ratingAtEntry ?? ""} />
-            </label>{" "}
-            <label>
-              <input name="active" type="checkbox" defaultChecked={holder.active} /> Active
-            </label>{" "}
-            <label>
-              <input name="pdgaMembership" type="checkbox" defaultChecked={holder.pdgaMembership} /> PDGA
-              member
-            </label>{" "}
-            <button type="submit">Save</button>{" "}
-            <button type="button" onClick={() => setEditing(false)}>
+              <input
+                name="ratingAtEntry"
+                type="number"
+                defaultValue={holder.ratingAtEntry ?? ""}
+                className="admin-input"
+              />
+            </label>
+            <label className="admin-field admin-field--check">
+              <input
+                name="active"
+                type="checkbox"
+                defaultChecked={holder.active}
+                className="admin-checkbox"
+              />{" "}
+              Active
+            </label>
+            <label className="admin-field admin-field--check">
+              <input
+                name="pdgaMembership"
+                type="checkbox"
+                defaultChecked={holder.pdgaMembership}
+                className="admin-checkbox"
+              />{" "}
+              PDGA member
+            </label>
+            <button type="submit" className="admin-button admin-button--primary">
+              Save
+            </button>
+            <button type="button" onClick={() => setEditing(false)} className="admin-button">
               Cancel
             </button>
             <Feedback message={message} warning={warning} />
@@ -156,15 +190,23 @@ export function HolderRow({ holder }: { holder: Holder }) {
     <tr>
       <td>{holder.id}</td>
       <td>{holder.name}</td>
-      <td>{holder.tagNumber}</td>
+      <td className="admin-num">{holder.tagNumber}</td>
       <td>{holder.pool}</td>
       <td>{holder.entryDate}</td>
-      <td>{holder.pdgaNumber ?? "—"}</td>
-      <td>{holder.ratingAtEntry ?? "—"}</td>
-      <td>{holder.active ? "yes" : "no"}</td>
-      <td>{holder.pdgaMembership ? "yes" : "no"}</td>
+      <td className="admin-num">{holder.pdgaNumber ?? "—"}</td>
+      <td className="admin-num">{holder.ratingAtEntry ?? "—"}</td>
       <td>
-        <button type="button" onClick={() => setEditing(true)}>
+        <span className="admin-status" data-status={holder.active ? "yes" : "no"}>
+          {holder.active ? "yes" : "no"}
+        </span>
+      </td>
+      <td>
+        <span className="admin-status" data-status={holder.pdgaMembership ? "yes" : "no"}>
+          {holder.pdgaMembership ? "yes" : "no"}
+        </span>
+      </td>
+      <td>
+        <button type="button" onClick={() => setEditing(true)} className="admin-button">
           Edit
         </button>
       </td>
@@ -188,28 +230,30 @@ export function PoolSwitchForm({ holders }: { holders: Holder[] }) {
   }
 
   return (
-    <form action={handleSubmit}>
-      <label>
+    <form action={handleSubmit} className="admin-form">
+      <label className="admin-field">
         Holder{" "}
-        <select name="holderId" required>
+        <select name="holderId" required className="admin-select">
           {holders.map((h) => (
             <option key={h.id} value={h.id}>
               #{h.tagNumber} {h.name} (Pool {h.pool})
             </option>
           ))}
         </select>
-      </label>{" "}
-      <label>
+      </label>
+      <label className="admin-field">
         To pool{" "}
-        <select name="toPool">
+        <select name="toPool" className="admin-select">
           <option value="A">A</option>
           <option value="B">B</option>
         </select>
-      </label>{" "}
-      <label>
-        Effective date <input name="effectiveDate" type="date" required />
-      </label>{" "}
-      <button type="submit">Record switch</button>
+      </label>
+      <label className="admin-field">
+        Effective date <input name="effectiveDate" type="date" required className="admin-input" />
+      </label>
+      <button type="submit" className="admin-button admin-button--primary">
+        Record switch
+      </button>
       <Feedback message={message} />
     </form>
   );

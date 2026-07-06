@@ -21,10 +21,12 @@ export function CancelEventButton({ eventId }: { eventId: number }) {
   }
 
   return (
-    <form action={handleSubmit} style={{ display: "inline" }}>
+    <form action={handleSubmit} className="admin-form--inline">
       <input type="hidden" name="eventId" value={eventId} />
-      <button type="submit">Cancel</button>
-      {message ? <span> {message}</span> : null}
+      <button type="submit" className="admin-button admin-button--danger">
+        Cancel
+      </button>
+      {message ? <span className="admin-feedback-inline">{message}</span> : null}
     </form>
   );
 }
@@ -45,10 +47,12 @@ export function TagNotPresentButton({ resultId }: { resultId: number }) {
   }
 
   return (
-    <form action={handleSubmit} style={{ display: "inline" }}>
+    <form action={handleSubmit} className="admin-form--inline">
       <input type="hidden" name="resultId" value={resultId} />
-      <button type="submit">Mark tag not present</button>
-      {message ? <span> {message}</span> : null}
+      <button type="submit" className="admin-button admin-button--danger">
+        Mark tag not present
+      </button>
+      {message ? <span className="admin-feedback-inline">{message}</span> : null}
     </form>
   );
 }

@@ -21,11 +21,19 @@ export function AceCountForm({ eventId, current }: { eventId: number; current: n
   }
 
   return (
-    <form action={handleSubmit} style={{ display: "inline" }}>
+    <form action={handleSubmit} className="admin-form--inline">
       <input type="hidden" name="eventId" value={eventId} />
-      <input name="aceEntries" type="number" min={0} defaultValue={current} style={{ width: "4rem" }} />
-      <button type="submit">Save</button>
-      {message ? <span> {message}</span> : null}
+      <input
+        name="aceEntries"
+        type="number"
+        min={0}
+        defaultValue={current}
+        className="admin-input admin-input--narrow"
+      />
+      <button type="submit" className="admin-button admin-button--primary">
+        Save
+      </button>
+      {message ? <span className="admin-feedback-inline">{message}</span> : null}
     </form>
   );
 }
@@ -46,11 +54,19 @@ export function EntryCountForm({ eventId, current }: { eventId: number; current:
   }
 
   return (
-    <form action={handleSubmit} style={{ display: "inline" }}>
+    <form action={handleSubmit} className="admin-form--inline">
       <input type="hidden" name="eventId" value={eventId} />
-      <input name="paidEntries" type="number" min={0} defaultValue={current} style={{ width: "4rem" }} />
-      <button type="submit">Save</button>
-      {message ? <span> {message}</span> : null}
+      <input
+        name="paidEntries"
+        type="number"
+        min={0}
+        defaultValue={current}
+        className="admin-input admin-input--narrow"
+      />
+      <button type="submit" className="admin-button admin-button--primary">
+        Save
+      </button>
+      {message ? <span className="admin-feedback-inline">{message}</span> : null}
     </form>
   );
 }

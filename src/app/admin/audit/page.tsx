@@ -4,8 +4,6 @@ import type { Route } from "next";
 import { SEASON_YEAR } from "@server/admin/context";
 import { listAuditLog } from "@server/db/repositories/auditLog";
 
-import { AdminNav } from "../admin-nav";
-
 export const dynamic = "force-dynamic";
 
 function formatJson(value: unknown): string {
@@ -29,63 +27,70 @@ export default async function AdminAuditPage({
   const rows = listAuditLog(SEASON_YEAR, { entityType: filter });
 
   return (
-    <main>
-      <h1>Audit log</h1>
-      <AdminNav />
-      <p>
-        <Link href="/admin">← Dashboard</Link>
-      </p>
-      <p>Read-only history of admin changes (Spec 10 §10.1).</p>
+    <>
+      <h1 className="admin-page-title">Audit log</h1>
+      <p className="admin-page-intro">Read-only history of admin changes (Spec 10 §10.1).</p>
 
-      <form method="get">
-        <label>
+      <form method="get" className="admin-toolbar">
+        <label className="admin-field">
           Entity type{" "}
-          <input name="entityType" defaultValue={filter ?? ""} placeholder="e.g. payout" />
+          <input
+            name="entityType"
+            defaultValue={filter ?? ""}
+            placeholder="e.g. payout"
+            className="admin-input"
+          />
         </label>{" "}
-        <button type="submit">Filter</button>{" "}
+        <button type="submit" className="admin-button admin-button--primary">
+          Filter
+        </button>{" "}
         {filter ? (
-          <Link href={"/admin/audit" as Route}>Clear filter</Link>
+          <Link href={"/admin/audit" as Route} className="admin-toolbar-link">
+            Clear filter
+          </Link>
         ) : null}
       </form>
 
       {rows.length === 0 ? (
-        <p>No audit entries{filter ? ` for entity type “${filter}”` : ""}.</p>
+        <p className="admin-empty">No audit entries{filter ? ` for entity type “${filter}”` : ""}.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Actor</th>
-              <th>Action</th>
-              <th>Entity type</th>
-              <th>Entity id</th>
-              <th>At</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.actorEmail}</td>
-                <td>{row.action}</td>
-                <td>{row.entityType}</td>
-                <td>{row.entityId}</td>
-                <td>{row.at}</td>
-                <td>
-                  <details>
-                    <summary>before / after</summary>
-                    <div>
-                      <strong>Before</strong>
-                      <pre>{formatJson(row.before)}</pre>
-                      <strong>After</strong>
-                      <pre>{formatJson(row.after)}</pre>
-                    </div>
-                  </details>
-                </td>
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Actor</th>
+                <th>Action</th>
+                <th>Entity type</th>
+                <th>Entity id</th>
+                <th>At</th>
+                <th>Details</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.actorEmail}</td>
+                  <td>{row.action}</td>
+                  <td>{row.entityType}</td>
+                  <td className="admin-num">{row.entityId}</td>
+                  <td>{row.at}</td>
+                  <td>
+                    <details className="admin-details">
+                      <summary>before / after</summary>
+                      <div className="admin-diff">
+                        <span className="admin-diff-label">Before</span>
+                        <pre className="admin-json">{formatJson(row.before)}</pre>
+                        <span className="admin-diff-label">After</span>
+                        <pre className="admin-json">{formatJson(row.after)}</pre>
+                      </div>
+                    </details>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-    </main>
+    </>
   );
 }

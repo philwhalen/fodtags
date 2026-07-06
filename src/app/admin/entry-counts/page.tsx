@@ -1,11 +1,8 @@
-import Link from "next/link";
-
 import { SEASON_YEAR } from "@server/admin/context";
 import { getEntryCount } from "@server/db/repositories/entryCounts";
 import { listEvents } from "@server/db/repositories/events";
 import { listSources } from "@server/db/repositories/eventSources";
 
-import { AdminNav } from "../admin-nav";
 import { AceCountForm, EntryCountForm } from "./entry-count-forms";
 
 export const dynamic = "force-dynamic";
@@ -16,50 +13,48 @@ export default async function AdminEntryCountsPage() {
   const sourceLabel = new Map(sources.map((s) => [s.id, s.label]));
 
   return (
-    <main>
-      <h1>Entry counts</h1>
-      <AdminNav />
-      <p>
-        <Link href="/admin">← Dashboard</Link>
-      </p>
-      <p>
+    <>
+      <h1 className="admin-page-title">Entry counts</h1>
+      <p className="admin-page-intro">
         Paid entry counts per League Night (feeds OLP pot). Ace entries are the separate $1 ace-pot
         buy-ins that night.
       </p>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Event</th>
-            <th>Source</th>
-            <th>Date</th>
-            <th>Paid entries</th>
-            <th>Ace entries</th>
-            <th>Update paid</th>
-            <th>Update ace</th>
-          </tr>
-        </thead>
-        <tbody>
-          {events.map((event) => {
-            const count = getEntryCount(event.id);
-            return (
-              <tr key={event.id}>
-                <td>{event.label}</td>
-                <td>{sourceLabel.get(event.eventSourceId) ?? event.eventSourceId}</td>
-                <td>{event.eventDate}</td>
-                <td>{count?.paidEntries ?? "—"}</td>
-                <td>{count?.aceEntries ?? "—"}</td>
-                <td>
-                  <EntryCountForm eventId={event.id} current={count?.paidEntries ?? 0} />
-                </td>
-                <td>
-                  <AceCountForm eventId={event.id} current={count?.aceEntries ?? 0} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </main>
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Source</th>
+              <th>Date</th>
+              <th>Paid entries</th>
+              <th>Ace entries</th>
+              <th>Update paid</th>
+              <th>Update ace</th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.map((event) => {
+              const count = getEntryCount(event.id);
+              return (
+                <tr key={event.id}>
+                  <td>{event.label}</td>
+                  <td>{sourceLabel.get(event.eventSourceId) ?? event.eventSourceId}</td>
+                  <td>{event.eventDate}</td>
+                  <td className="admin-num">{count?.paidEntries ?? "—"}</td>
+                  <td className="admin-num">{count?.aceEntries ?? "—"}</td>
+                  <td>
+                    <EntryCountForm eventId={event.id} current={count?.paidEntries ?? 0} />
+                  </td>
+                  <td>
+                    <AceCountForm eventId={event.id} current={count?.aceEntries ?? 0} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

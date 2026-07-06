@@ -49,10 +49,15 @@ export function RatingsRefreshButton() {
 
   return (
     <div>
-      <button onClick={handleClick} disabled={pending} type="button">
+      <button
+        onClick={handleClick}
+        disabled={pending}
+        type="button"
+        className="admin-button admin-button--primary"
+      >
         {pending ? "Pulling ratings…" : "Pull official ratings now"}
       </button>
-      {message ? <p>{message}</p> : null}
+      {message ? <p className="admin-feedback">{message}</p> : null}
     </div>
   );
 }

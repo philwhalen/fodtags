@@ -33,8 +33,8 @@ function Feedback({ message, warning }: { message: string | null; warning?: stri
   if (!message && !warning) return null;
   return (
     <div>
-      {message ? <p>{message}</p> : null}
-      {warning ? <p style={{ color: "darkorange" }}>{warning}</p> : null}
+      {message ? <p className="admin-feedback admin-feedback--success">{message}</p> : null}
+      {warning ? <p className="admin-feedback admin-feedback--warning">{warning}</p> : null}
     </div>
   );
 }
@@ -96,66 +96,83 @@ export function PendingEntrantRow({
 
   return (
     <tr>
-      <td>{entry.pdgaNumber}</td>
+      <td className="admin-num">{entry.pdgaNumber}</td>
       <td>{entry.displayName}</td>
-      <td>{entry.appearanceCount}</td>
+      <td className="admin-num">{entry.appearanceCount}</td>
       <td>{suggestionText}</td>
       <td>
-        <form action={handleLink} style={{ display: "inline" }}>
-          <input type="hidden" name="pdgaNumber" value={entry.pdgaNumber} />
-          <label>
-            Link to{" "}
-            <select name="holderId" required defaultValue={entry.suggestedHolders[0]?.id ?? ""}>
-              <option value="" disabled>
-                Select holder…
-              </option>
-              {holders.map((h) => (
-                <option key={h.id} value={h.id}>
-                  #{h.tagNumber} {h.name} (Pool {h.pool})
+        <div className="admin-actions">
+          <form action={handleLink} className="admin-form--inline">
+            <input type="hidden" name="pdgaNumber" value={entry.pdgaNumber} />
+            <label className="admin-field">
+              Link to{" "}
+              <select
+                name="holderId"
+                required
+                defaultValue={entry.suggestedHolders[0]?.id ?? ""}
+                className="admin-select"
+              >
+                <option value="" disabled>
+                  Select holder…
                 </option>
-              ))}
-            </select>
-          </label>{" "}
-          <button type="submit">Link</button>
-        </form>{" "}
-        <button type="button" onClick={() => setCreateOpen((v) => !v)}>
-          {createOpen ? "Cancel create" : "Create holder"}
-        </button>{" "}
-        <form action={handleNonHolder} style={{ display: "inline" }}>
-          <input type="hidden" name="pdgaNumber" value={entry.pdgaNumber} />
-          <button type="submit">Mark non-holder</button>
-        </form>
+                {holders.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    #{h.tagNumber} {h.name} (Pool {h.pool})
+                  </option>
+                ))}
+              </select>
+            </label>{" "}
+            <button type="submit" className="admin-button admin-button--primary">
+              Link
+            </button>
+          </form>
+          <button
+            type="button"
+            className="admin-button"
+            onClick={() => setCreateOpen((v) => !v)}
+          >
+            {createOpen ? "Cancel create" : "Create holder"}
+          </button>
+          <form action={handleNonHolder} className="admin-form--inline">
+            <input type="hidden" name="pdgaNumber" value={entry.pdgaNumber} />
+            <button type="submit" className="admin-button admin-button--danger">
+              Mark non-holder
+            </button>
+          </form>
+        </div>
         <Feedback message={linkMessage} />
         <Feedback message={nonHolderMessage} />
         {createOpen ? (
-          <form action={handleCreate}>
+          <form action={handleCreate} className="admin-form">
             <input type="hidden" name="pdgaNumber" value={entry.pdgaNumber} />
-            <label>
-              Name <input name="name" defaultValue={entry.displayName} required />
-            </label>{" "}
-            <label>
-              Tag # <input name="tagNumber" type="number" min={1} required />
-            </label>{" "}
-            <label>
+            <label className="admin-field">
+              Name <input name="name" defaultValue={entry.displayName} required className="admin-input" />
+            </label>
+            <label className="admin-field">
+              Tag # <input name="tagNumber" type="number" min={1} required className="admin-input" />
+            </label>
+            <label className="admin-field">
               Pool{" "}
-              <select name="pool" defaultValue="A">
+              <select name="pool" defaultValue="A" className="admin-select">
                 <option value="A">A</option>
                 <option value="B">B</option>
               </select>
-            </label>{" "}
-            <label>
-              Entry date <input name="entryDate" type="datetime-local" required />
-            </label>{" "}
-            <label>
-              Rating at entry <input name="ratingAtEntry" type="number" />
-            </label>{" "}
-            <label>
-              <input name="active" type="checkbox" defaultChecked /> Active
-            </label>{" "}
-            <label>
-              <input name="pdgaMembership" type="checkbox" defaultChecked /> PDGA member
-            </label>{" "}
-            <button type="submit">Create &amp; link</button>
+            </label>
+            <label className="admin-field">
+              Entry date <input name="entryDate" type="datetime-local" required className="admin-input" />
+            </label>
+            <label className="admin-field">
+              Rating at entry <input name="ratingAtEntry" type="number" className="admin-input" />
+            </label>
+            <label className="admin-field admin-field--check">
+              <input name="active" type="checkbox" defaultChecked className="admin-checkbox" /> Active
+            </label>
+            <label className="admin-field admin-field--check">
+              <input name="pdgaMembership" type="checkbox" defaultChecked className="admin-checkbox" /> PDGA member
+            </label>
+            <button type="submit" className="admin-button admin-button--primary">
+              Create &amp; link
+            </button>
             <Feedback message={createMessage} warning={createWarning} />
           </form>
         ) : null}
