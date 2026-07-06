@@ -5,7 +5,6 @@ import "server-only";
 import { listEvents } from "@server/db/repositories/events";
 import { hasStaleSource } from "@server/db/repositories/eventSources";
 import {
-  slugifyName,
   type Pool,
   type PublicScoreSheetHolder,
   type PublicScoreSheetPayload,
@@ -116,6 +115,7 @@ export function buildScoreSheetViews(
   seasonYear: number,
   results: SeasonResults,
   nameById: Map<number, string>,
+  slugById: Map<number, string>,
   tournamentSourceCount: number,
   updatedAt: string,
   pendingReview: number,
@@ -143,7 +143,7 @@ export function buildScoreSheetViews(
       return {
         holderId: row.holderId,
         name,
-        slug: slugifyName(name),
+        slug: slugById.get(row.holderId) ?? String(row.holderId),
         tagNumber: row.tagNumber,
         rank: row.rank,
         tieBrokenByTag: row.tieBrokenByTag,

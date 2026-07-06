@@ -67,7 +67,7 @@ The legacy Google Sheet showed per-pool ranked lists with skins-pot values attac
 ## 7.6 Deep links
 
 - `/2026/score-sheet/pool-a` and `/2026/score-sheet/pool-b` (the pool toggle emits these, mirroring the leaderboard's pool deep links).
-- Per-player anchors use the **name slug** (as in Rounds & Ratings / Player Profiles): `/2026/score-sheet/pool-a#{name-slug}`, so a director can link a holder straight to their row.
+- Per-player anchors use the holder's **canonical slug** ([Spec 08 §8.2](./08-Feature-Player-Profiles.md#82-identity--urls)): `/2026/score-sheet/pool-a#{slug}`, so a director can link a holder straight to their row. Tapping a summary-row player name → `/2026/players/{slug}`.
 
 ## Acceptance criteria
 

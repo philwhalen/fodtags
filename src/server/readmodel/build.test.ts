@@ -15,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { StandingsViewPayload, SubLeagueMetaPayload, ViewRow } from "@server/readmodel/build";
 import type { PublicRoundsPayload } from "@/lib";
+import { buildCanonicalSlugs } from "@/lib";
 
 const SEASON_YEAR = 2026;
 
@@ -144,7 +145,7 @@ describe("read model: build -> publish -> read", () => {
 });
 
 describe("read model: rounds view", () => {
-  let buildRoundsView: (seasonYear: number) => ViewRow;
+  let buildRoundsView: (seasonYear: number, slugById: Map<number, string>) => ViewRow;
   let listHolders: (seasonYear: number) => { id: number; name: string; tagNumber: number; active: boolean }[];
   let listEvents: (seasonYear: number) => { id: number; label: string; canceled: boolean }[];
   let listSources: (seasonYear: number) => { id: number; type: string }[];
@@ -318,7 +319,16 @@ describe("read model: rounds view", () => {
   });
 
   function roundsPayload(): PublicRoundsPayload {
-    return buildRoundsView(SEASON_YEAR).payload as PublicRoundsPayload;
+    const slugById = buildCanonicalSlugs(
+      listHolders(SEASON_YEAR)
+        .filter((holder) => holder.active)
+        .map((holder) => ({
+          id: holder.id,
+          name: holder.name,
+          tagNumber: holder.tagNumber,
+        })),
+    );
+    return buildRoundsView(SEASON_YEAR, slugById).payload as PublicRoundsPayload;
   }
 
   function holderByName(name: string) {

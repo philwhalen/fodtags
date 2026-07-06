@@ -87,6 +87,7 @@ describe("public UI shell", () => {
           rank: 1,
           playerId: 1,
           name: "Alex Alpha",
+          slug: "alex-alpha",
           tagNumber: 12,
           points: 0,
           pool: "A",
@@ -96,6 +97,7 @@ describe("public UI shell", () => {
           rank: 2,
           playerId: 2,
           name: "Blake Beta",
+          slug: "blake-beta",
           tagNumber: 34,
           points: 0,
           pool: "A",
@@ -112,26 +114,40 @@ describe("public UI shell", () => {
     expect(formatEt(payload.updatedAt)).toContain("ET");
   });
 
-  it("placeholder routes resolve (modules on disk) and are reachable from nav", () => {
+  it("placeholder list is empty once all nav targets are real pages", () => {
+    expect(placeholderRouteHrefs(SEASON_YEAR)).toEqual([]);
+  });
+
+  it("Players routes (real pages) resolve and are reachable from nav", () => {
     const navHrefs = new Set(publicNavItems(SEASON_YEAR).map((item) => item.href));
-    const routeFiles: Record<string, string> = {
-      [`/${SEASON_YEAR}/players/search`]: "src/app/(public)/[season]/players/[slug]/page.tsx",
-    };
 
-    for (const href of placeholderRouteHrefs(SEASON_YEAR)) {
-      expect(routeFiles[href]).toBeDefined();
-      expect(fs.existsSync(path.join(REPO_ROOT, routeFiles[href]!))).toBe(true);
-    }
+    expect(navHrefs.has(`/${SEASON_YEAR}/players`)).toBe(true);
+    expect(placeholderRouteHrefs(SEASON_YEAR).some((href) => href.includes("/players"))).toBe(
+      false,
+    );
 
-    for (const href of placeholderRouteHrefs(SEASON_YEAR)) {
-      expect(navHrefs.has(href)).toBe(true);
-    }
+    expect(
+      fs.existsSync(path.join(REPO_ROOT, "src/app/(public)/[season]/players/page.tsx")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(REPO_ROOT, "src/app/(public)/[season]/players/[slug]/page.tsx")),
+    ).toBe(true);
+
+    const index = getPublished(SEASON_YEAR, "players");
+    expect(index).toBeDefined();
+    const holders = (index!.payload as { holders: { slug: string }[] }).holders;
+    expect(holders.length).toBeGreaterThan(0);
+    const sample = getPublished(SEASON_YEAR, `players/${holders[0]!.slug}`);
+    expect(sample).toBeDefined();
+  });
+
+  it("core public routes resolve on disk and are reachable from nav", () => {
+    const navHrefs = new Set(publicNavItems(SEASON_YEAR).map((item) => item.href));
 
     expect(
       fs.existsSync(path.join(REPO_ROOT, "src/app/(public)/[season]/rounds/page.tsx")),
     ).toBe(true);
     expect(navHrefs.has(`/${SEASON_YEAR}/rounds`)).toBe(true);
-    expect(navHrefs.has(`/${SEASON_YEAR}/players/search`)).toBe(true);
   });
 
   it("Financials route (real page) resolves and is reachable from nav", () => {

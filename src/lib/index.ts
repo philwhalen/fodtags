@@ -169,6 +169,33 @@ export {
   VALID_SUB_LEAGUES,
 } from "./public-routes";
 export type { PoolSlug, PublicNavItem, SubLeagueSlug } from "./public-routes";
+export { buildCanonicalSlugs, resolveHolderSlug } from "./holder-slug";
+export type { HolderSlugResolution, SlugHolderInput } from "./holder-slug";
+export {
+  buildProfileLinks,
+  countLeagueNightRounds,
+  olpIneligibilityReason,
+  poolBAccrualActive,
+  profilePointsFromByType,
+  projectProfile,
+  splitSkinsPayoutCents,
+} from "./profile-view";
+export type {
+  PlayersIndexRow,
+  ProfileLinks,
+  ProfileMoneyOlp,
+  ProfileMoneySkins,
+  ProfileOlpSectionView,
+  ProfileOlpSubLeagueRow,
+  ProfilePointsByType,
+  ProfileRoundsSectionView,
+  ProfileStandingSnapshot,
+  ProfileView,
+  PublicPlayersIndexPayload,
+  PublicProfilePayload,
+  PublicSkinsPayload,
+  PublicSkinsRow,
+} from "./profile-view";
 export { fundLabel, projectFinancials } from "./financials-view";
 export type {
   AcePotView,

@@ -15,6 +15,7 @@ import type { OlpRow } from "./season-results";
 export interface PublicOlpRow {
   holderId: number;
   name: string;
+  slug: string;
   tagNumber: number;
   /** Eligible rows: 1..N over the eligible field, best score first. `null`
    * for not-eligible rows (Spec 06 §6.2: not ranked). */
@@ -42,7 +43,7 @@ export interface PublicOlpPayload {
   /** Engine-shaped rows + resolved holder names, unsplit — the
    * eligible/not-eligible split and display ranking happen at read time
    * in `projectOlp`. */
-  rows: (OlpRow & { name: string })[];
+  rows: (OlpRow & { name: string; slug: string })[];
   pot: number;
   /** True while the sub-league is not yet `complete` — pot/payouts are
    * provisional (Spec 06 §6.3/§6.4). */
@@ -74,12 +75,13 @@ function ineligibleReason(row: OlpRow): string {
 }
 
 function toPublicRow(
-  row: OlpRow & { name: string },
+  row: OlpRow & { name: string; slug: string },
   displayRank: number | null,
 ): PublicOlpRow {
   const base: PublicOlpRow = {
     holderId: row.holderId,
     name: row.name,
+    slug: row.slug,
     tagNumber: row.tagNumber,
     displayRank,
     score: roundToOneDecimal(row.score),

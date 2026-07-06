@@ -33,7 +33,7 @@ Per [Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)
 
 - **Rank** reflects tie-breakers ([Spec 02 §2.6](./02-Domain-Model-and-Scoring.md#26-tie-breakers)) — low tag number breaks ties, so tied point totals still order deterministically.
 - **Points** is the aggregated total for the selected scope.
-- Tapping a row → player profile.
+- Tapping a row → player profile ([Spec 08 §8.2](./08-Feature-Player-Profiles.md#82-identity--urls), canonical slug).
 - The viewing user cannot be "highlighted" (no login), but provide a client-side **name search** ([§4.7](#47-name-search)).
 
 ## 4.3 Sub-league leaderboard content
@@ -92,7 +92,7 @@ A client-side **name filter** sits above the standings table (no login, so nothi
 - **Current-sub-league resolution** picks the window containing today, else the most-recently-ended sub-league; verified for a date that falls in the gap between two sub-leagues (resolves to the just-ended one) and for a pre-season date (resolves to the earliest).
 - The `/2026/sub-league` and `/2026/sub-league/pool-b` aliases redirect to the current sub-league's explicit URL, preserving pool; explicit sub-league URLs do not redirect.
 - **Name filter** narrows the table to matching rows without re-ranking, clears back to the full list, and shows a no-match message for a non-matching query.
-- Tapping a row deep-links to that player's profile.
+- Tapping a row deep-links to that player's profile at `/2026/players/{canonical-slug}` ([Spec 08 §8.2](./08-Feature-Player-Profiles.md#82-identity--urls)).
 - Deep links restore the exact view.
 - Stale/unmatched conditions render their banners; an in-progress sub-league shows League-Night points only with the "Podium bonus not yet finalized" note.
 

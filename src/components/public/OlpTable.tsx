@@ -2,7 +2,6 @@ import type { Route } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { slugifyName } from "@/lib";
 import type { PublicOlpRow } from "@/lib";
 
 /**
@@ -35,7 +34,7 @@ export function OlpTable({
       row.name
     ) : (
       <Link
-        href={`/${seasonYear}/players/${slugifyName(row.name)}` as Route}
+        href={`/${seasonYear}/players/${row.slug}` as Route}
         className="standings-player-link"
       >
         {row.name}

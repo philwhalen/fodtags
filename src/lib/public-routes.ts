@@ -67,14 +67,14 @@ export function publicNavItems(seasonYear: number): PublicNavItem[] {
     },
     {
       label: "Players",
-      href: `/${season}/players/search`,
-      description: "Search tag holders",
+      href: `/${season}/players`,
+      description: "Browse tag holders and profiles",
     },
   ];
 }
 
 /** All placeholder routes that must resolve (no 404) for nav smoke tests. */
 export function placeholderRouteHrefs(seasonYear: number): string[] {
-  const season = String(seasonYear);
-  return [`/${season}/players/search`];
+  void seasonYear;
+  return [];
 }

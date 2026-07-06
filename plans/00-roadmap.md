@@ -142,9 +142,14 @@ _Done: an opt-in, fail-closed `DEV_AUTH_BYPASS` flag (`config.devAuthBypassEnabl
 - **Hard guardrail:** the bypass must be **impossible outside `NODE_ENV=development`** (fail-closed; ideally also behind an explicit opt-in env flag), and adds **no public product surface** — production auth behavior is unchanged.
 - Outcome: reach `/admin/events` to register/correct the Early/Mid/Late sources with real PDGA event IDs (types, dates, divisions), then run a live "Refresh now" and verify the pipeline populates real rounds (already proven end-to-end against `104527`).
 
-### Feature 6 — Player Profiles  ([spec 08](../specs/08-Feature-Player-Profiles.md))
+### Feature 6 — Player Profiles  ([spec 08](../specs/08-Feature-Player-Profiles.md)) ✅ complete
+_Accepted and archived: [`plans/completed/player-profiles-00-master.md`](./completed/player-profiles-00-master.md) (token/cost accounting intact)._
+
 Per-holder page unifying standings, rounds/ratings, points breakdown, OLP, and money.
-Aggregates all five prior views → built last.
+Aggregates all five prior views → built last. Delivered as a read-only projection: canonical
+holder slugs (`players` index + `players/{slug}` views), first public `skins/pool-*` views,
+`/players` roster index, compact profile sections with deep links, and unified profile links
+across all list views — engine untouched.
 
 ### Common Work D — Hardening & launch
 - Accessibility (WCAG AA) and performance passes across all views.
@@ -152,18 +157,11 @@ Aggregates all five prior views → built last.
 
 ## Next planning pass
 
-The **Dev Spike — Local admin bypass** above is done ✅ — the director can now reach `/admin/events` locally to fix the Early/Mid/Late event-source configuration and drive a real live refresh.
+**Feature 6 — Player Profiles** is done ✅ — the last product feature. All six public views
+(Leaderboards, Rounds & Ratings, OLP, Score Sheets, Financials, Player Profiles) are live.
 
-Next, take **Feature 6 — Player Profiles** ([spec 08](../specs/08-Feature-Player-Profiles.md)) into the
-full spec-driven workflow. It is the **last product feature** and aggregates all five prior views —
-standings/Championship rank (Feature 1), rounds & ratings (Feature 2), OLP (Feature 3), the points
-breakdown / score sheet (Feature 4), and the per-holder money picture (Feature 5) — into one
-per-holder page, so it is built on top of read-model views that now all exist. Expect it to be
-largely a **read-only projection/aggregation** (like Features 1–5): a per-holder `players/<slug>`
-read-model view (or a page that composes the existing per-feature views by holder), pure
-`src/lib` projection helpers, and the profile page replacing today's `players/search` placeholder —
-with the standard freshness/projected-final treatment and deep-linkable holder slugs. Confirm
-during Specify whether any holder-scoped slice of the money/OLP views needs adding to `buildViews`.
-After Feature 6, only **Common Work D — Hardening & launch** remains.
+Next, take **Common Work D — Hardening & launch** into the workflow (or implement directly
+where items are tooling/ops-only per CLAUDE.md): accessibility (WCAG AA) and performance
+passes across all views; refresh-failure alerting; finalize ops/backup/deploy contract.
 
-_Common Work A/B/C, Features 1–5, and the Dev Spike (local admin bypass) completed — see the ✅ markers above._
+_Common Work A/B/C, Features 1–6, and the Dev Spike (local admin bypass) completed — see the ✅ markers above._

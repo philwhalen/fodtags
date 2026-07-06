@@ -8,6 +8,7 @@ import type { OlpRow } from "./season-results";
 
 function row(overrides: Partial<OlpRow> & Pick<OlpRow, "holderId" | "tagNumber">): OlpRow & {
   name: string;
+  slug: string;
 } {
   return {
     rank: 1,
@@ -21,11 +22,12 @@ function row(overrides: Partial<OlpRow> & Pick<OlpRow, "holderId" | "tagNumber">
     projected: true,
     tieBrokenByTag: false,
     name: `Holder ${overrides.holderId}`,
+    slug: `holder-${overrides.holderId}`,
     ...overrides,
   };
 }
 
-function payload(rows: (OlpRow & { name: string })[], overrides: Partial<PublicOlpPayload> = {}): PublicOlpPayload {
+function payload(rows: (OlpRow & { name: string; slug: string })[], overrides: Partial<PublicOlpPayload> = {}): PublicOlpPayload {
   return {
     subLeague: "MID",
     rows,

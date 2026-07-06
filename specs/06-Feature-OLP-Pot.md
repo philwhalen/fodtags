@@ -35,6 +35,7 @@ The ranked table lists the **eligible** players, ranked 1..N by OLP score (best/
 
 - **PDGA-membership status is an admin flag on the roster** ([Spec 10 §10.2](./10-Admin-Console.md#102-roster--tag-management)) — reliable and not dependent on scraping.
 - Ties among ranked players are broken by **low tag number** ([Spec 02 §2.6](./02-Domain-Model-and-Scoring.md#26-tie-breakers)); surface a tie-break indicator as the leaderboards do.
+- Tapping a row → player profile ([Spec 08 §8.2](./08-Feature-Player-Profiles.md#82-identity--urls), canonical slug).
 
 ## 6.3 Payouts & pot
 

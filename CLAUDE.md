@@ -2,9 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current state: specs only, no code yet
+## Current state: app is built through Feature 6 (all product features)
 
-This repo currently contains **only the specifications** under `specs/`. There is no `src/`, no `package.json`, no build tooling — the application has not been scaffolded. The first coding task is the **walking skeleton** defined in [`specs/12-Architecture.md` §12.13](./specs/12-Architecture.md). Read the relevant spec before writing code; the specs are the source of truth and should be kept in sync when decisions change.
+The application is scaffolded and substantially built. The walking skeleton, **Common Work A/B/C**, **Features 1–6** (Leaderboards, Rounds & Ratings, OLP Pot, Pool Score Sheets, Financials, Player Profiles), and the **dev admin-bypass spike** are all complete. The full stack is live: real domain schema, the pure scoring/OLP/financial engine, the real 403-avoiding PDGA scraper (proven against live event `104527`), the read-model publish pipeline, the auth-gated admin console, and all six public views.
+
+What remains (see [`plans/00-roadmap.md`](./plans/00-roadmap.md) for the authoritative sequence): **Common Work D — Hardening & launch** only.
+
+Read the relevant spec before writing code; the specs remain the source of truth and should be kept in sync when decisions change.
 
 ## What this project is
 
@@ -40,7 +44,7 @@ Start at [`specs/00-Master-Spec.md`](./specs/00-Master-Spec.md) — the entry po
 - `specs/04`–`09` — the four core features (leaderboards, rounds & ratings, OLP pot, score sheets), plus player profiles and financials.
 - [`specs/10-Admin-Console.md`](./specs/10-Admin-Console.md), [`specs/11-UX-and-Nonfunctional.md`](./specs/11-UX-and-Nonfunctional.md) — admin surface; UX/performance/accessibility.
 
-## Architecture (as decided in spec 12 — not yet built)
+## Architecture (as decided in spec 12 — and now built)
 
 Single full-stack **Next.js (App Router)** app, TypeScript strict, one Node process on a Google Cloud VM behind existing nginx. **SQLite** (WAL mode, single file under `DATA_DIR`) via **Drizzle ORM** + `better-sqlite3`. In-process timezone-aware scheduler (`croner`). Auth via **Auth.js** Google OAuth against a `directors` email allowlist. Vitest for tests. `output: 'standalone'` build.
 
@@ -60,7 +64,7 @@ Non-negotiable boundary rules to preserve when implementing:
 - **Season-scoped from day one.** Every domain table carries `seasonYear` (2026 at launch); model so past seasons can be added later without reshaping the schema.
 - **Manual "Refresh now" and the scheduled refresh call the *same* pipeline function** with a single-flight guard; each run recorded in `refresh_runs`.
 
-## Testing priorities (once code exists)
+## Testing priorities
 
 Vitest. The **engine unit tests are the priority** — fixture in → expected out, reproducing hand calculations. Two OLP worked examples must compute exactly: `85.3 + 5 − 7 − 2 = 81.3` and `93.7 − 3.3 − 6 − 3 = 81.4` (see spec 02 §2.8). Plus a pipeline integration test: stub PDGA source → run → published read model → page renders empty roster. CI runs typecheck → lint → test → `next build`.
 

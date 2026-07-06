@@ -1,7 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 
-import { roundToOneDecimal, slugifyName } from "@/lib";
+import { roundToOneDecimal } from "@/lib";
 import type { PublicStandingsRow } from "@/lib/standings-view";
 
 /**
@@ -47,7 +47,7 @@ export function StandingsTable({
                   row.name
                 ) : (
                   <Link
-                    href={`/${seasonYear}/players/${slugifyName(row.name)}` as Route}
+                    href={`/${seasonYear}/players/${row.slug}` as Route}
                     className="standings-player-link"
                   >
                     {row.name}

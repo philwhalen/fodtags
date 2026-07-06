@@ -18,7 +18,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { slugifyName } from "@/lib";
+import { buildCanonicalSlugs } from "@/lib";
 import type {
   Pool,
   PublicScoreSheetPayload,
@@ -78,6 +78,7 @@ let buildScoreSheetViews: (
   seasonYear: number,
   results: SeasonResults,
   nameById: Map<number, string>,
+  slugById: Map<number, string>,
   tournamentSourceCount: number,
   updatedAt: string,
   pendingReview: number,
@@ -225,6 +226,7 @@ describe("score-sheet build (plans/score-sheets/02-readmodel-build.md)", () => {
       SEASON_YEAR,
       results,
       new Map(),
+      new Map(),
       snapshot.tournamentSourceCount,
       new Date().toISOString(),
       0,
@@ -233,7 +235,7 @@ describe("score-sheet build (plans/score-sheets/02-readmodel-build.md)", () => {
       .payload as PublicScoreSheetPayload;
     const alexNoName = noNamesPoolA.holders.find((h) => h.holderId === alexId)!;
     expect(alexNoName.name).toBe(`Holder #${alexId}`);
-    expect(alexNoName.slug).toBe(slugifyName(`Holder #${alexId}`));
+    expect(alexNoName.slug).toBe(String(alexId));
   });
 
   it("4. League-Night cap: >15 MID League Nights for one holder drops the excess with reason 'cap'", () => {
@@ -320,6 +322,7 @@ describe("score-sheet build (plans/score-sheets/02-readmodel-build.md)", () => {
         SEASON_YEAR,
         results,
         new Map([[holderId, "Cap Test Holder"]]),
+        buildCanonicalSlugs([{ id: holderId, name: "Cap Test Holder", tagNumber: 99 }]),
         tournamentSourceCount,
         new Date().toISOString(),
         0,

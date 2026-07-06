@@ -21,7 +21,7 @@ This is a **read-only projection** like every other view: it reads a precomputed
 ## 5.1 Two entry points
 
 1. **All-players roster list** (`/2026/rounds`) — one row per **tag holder** (name, tag #, present rating, round count, mini rating trend), ordered for quick scanning. Tapping a row drills into that player's rounds. This is the default landing for the **Rounds** nav item.
-2. **Per-player rounds** (`/2026/players/{slug}/rounds`) — the full round-by-round table for one holder. The **same table** is embedded in the player's [profile](./08-Feature-Player-Profiles.md); the profile shows **all event types by default**, whereas the standalone Rounds path inherits the active event-type filter (§5.4).
+2. **Per-player rounds** (`/2026/players/{slug}/rounds`) — the full round-by-round table for one holder. The profile ([Spec 08 §8.1](./08-Feature-Player-Profiles.md#81-profile-contents)) shows a **compact summary** (sparkline + recent 5 rounds) with a "View full rounds" link here; the profile's rounds summary respects its sub-league selector (§8.5), whereas this standalone path inherits `?league` / `?types` (§5.4).
 
 There is **no pool toggle** here — rounds are not pool-ranked (pools matter only to standings, [Spec 04](./04-Feature-Leaderboards.md)). The roster list is a single combined list across both pools.
 
@@ -73,7 +73,7 @@ Three filter dimensions sit above the view. **Sub-league and event-type are shar
 - Under **sub-league = All**, the event-type toggles govern which types appear (League Nights always; Tournament / FOD Open when toggled on).
 - When a **specific sub-league** (Early / Mid / Late) is selected, the view is inherently scoped to **that sub-league's League Nights**; Tournament / FOD Open rounds cannot appear, so those toggles are disabled/hidden while a specific sub-league is active. Clearing back to **All** restores them.
 
-Filters apply consistently to **both** entry points: on the roster list they change the **Rounds** count and **trend** per holder; on the per-player table they change which rounds are listed. The **profile embed** ([Spec 08](./08-Feature-Player-Profiles.md)) ignores this filter and always shows all event types.
+Filters apply consistently to **both** entry points: on the roster list they change the **Rounds** count and **trend** per holder; on the per-player table they change which rounds are listed. The profile ([Spec 08 §8.5](./08-Feature-Player-Profiles.md#85-sub-league-context-on-the-profile)) uses its own sub-league selector for the compact rounds summary; the full table at `/players/{slug}/rounds` inherits `?league` / `?types` as above.
 
 The **default** all-players view (`/2026/rounds`, no params) is **All sub-leagues, League Nights only**.
 
@@ -117,7 +117,7 @@ Stable, shareable URLs. Sub-league and event-type are **query params**; the per-
 - **Unrated / pending:** a holder with no official rating shows "—/Unrated"; a round PDGA has not yet rated shows "pending" (never blank/zero); a holder with <2 rated rounds shows no sparkline (no broken chart).
 - **Filters:** the sub-league filter correctly partitions rounds across the 3 separate PDGA events; the event-type filter defaults to League Nights and adds Tournament / FOD Open when toggled; selecting a specific sub-league disables the Tournament/FOD Open toggles and shows only that sub-league's League Nights; filters change both the roster aggregates and the per-player list.
 - **Search:** the roster name search narrows visible rows client-side without refetch and clears back to the full list; a non-matching query shows the no-match message.
-- **Deep links:** `?league`, `?types`, and `?q` restore the exact view; the per-player path inherits `?league`/`?types`; the profile embed always shows all event types regardless of the filter.
+- **Deep links:** `?league`, `?types`, and `?q` restore the exact view; the per-player path inherits `?league`/`?types`; the profile compact summary follows its sub-league selector ([Spec 08 §8.5](./08-Feature-Player-Profiles.md#85-sub-league-context-on-the-profile)).
 - **States:** only tag holders appear; pre-season shows the roster at 0 rounds, not an error; stale and pending-review conditions render their banners as in [Spec 04](./04-Feature-Leaderboards.md#44-states).
 - **Accessibility:** the sparkline has a non-visual text alternative and is never the sole carrier of the trend information.
 

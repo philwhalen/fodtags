@@ -11,15 +11,21 @@ import type {
   Pool,
   PublicFinancialsPayload,
   PublicOlpPayload,
+  PublicPlayersIndexPayload,
+  PublicProfilePayload,
   PublicRoundsPayload,
   PublicScoreSheetPayload,
+  PublicSkinsPayload,
   SeasonStandingRow,
   SubLeagueType,
   SubLeagueWindow,
 } from "@/lib";
 import { buildFinancialsView } from "@server/readmodel/financials-build";
-import { buildRoundsView } from "@server/readmodel/rounds-build";
+import { buildPlayersViews } from "@server/readmodel/players-build";
+import { assembleRoundsPayload, buildRoundsView } from "@server/readmodel/rounds-build";
 import { buildScoreSheetViews } from "@server/readmodel/score-sheet-build";
+import { buildSkinsViews } from "@server/readmodel/skins-build";
+import { buildCanonicalSlugs } from "@/lib";
 
 const POOLS: Pool[] = ["A", "B"];
 const SUB_LEAGUE_TYPES: SubLeagueType[] = ["EARLY", "MID", "LATE"];
@@ -33,6 +39,7 @@ export interface StandingsRow {
   rank: number;
   playerId: number;
   name: string;
+  slug: string;
   tagNumber: number;
   points: number;
   pool: Pool;
@@ -87,17 +94,22 @@ export interface ViewRow {
     | PublicRoundsPayload
     | PublicOlpPayload
     | PublicScoreSheetPayload
-    | PublicFinancialsPayload;
+    | PublicFinancialsPayload
+    | PublicSkinsPayload
+    | PublicPlayersIndexPayload
+    | PublicProfilePayload;
 }
 
 function toStandingsRows(
   standing: SeasonStandingRow[],
   nameById: Map<number, string>,
+  slugById: Map<number, string>,
 ): StandingsRow[] {
   return standing.map((row) => ({
     rank: row.rank,
     playerId: row.holderId,
     name: nameById.get(row.holderId) ?? `Holder #${row.holderId}`,
+    slug: slugById.get(row.holderId) ?? String(row.holderId),
     tagNumber: row.tagNumber,
     points: row.totalPoints,
     pool: row.pool,
@@ -122,18 +134,16 @@ function isViewStale(seasonYear: number, subLeagueType?: SubLeagueType): boolean
  * the PURE `computeSeason` engine once, and shape the result into view
  * rows keyed by `viewKey`: Championship + sub-league standings (Spec 04
  * §4.1/§4.3/§4.5), OLP (Spec 06), rounds (Spec 05), score-sheet (Spec 07),
- * and financials (Spec 09) views. Skins view shapes are intentionally NOT
- * built here; they arrive with their own feature on top of the `skins`
- * field `computeSeason` already produces.
+ * and financials (Spec 09) views. Skins views (Spec 08 §8.4) publish the
+ * engine's existing `skins` qualification output for profile money sections.
  */
 export function buildViews(seasonYear: number): ViewRow[] {
   const snapshot = loadSeasonSnapshot(seasonYear);
   const results = computeSeason(snapshot);
 
-  // Display-only holder names: deliberately NOT part of the engine's
-  // `SeasonSnapshot`/`SeasonResults` contract (see seasonSnapshot.ts), so
-  // resolved here at the read-model edge instead.
-  const nameById = new Map(listHolders(seasonYear).map((h) => [h.id, h.name]));
+  const activeHolders = listHolders(seasonYear).filter((h) => h.active);
+  const nameById = new Map(activeHolders.map((h) => [h.id, h.name]));
+  const slugById = buildCanonicalSlugs(activeHolders);
 
   const updatedAt = new Date().toISOString();
   const pendingReview = countPending(seasonYear);
@@ -145,7 +155,7 @@ export function buildViews(seasonYear: number): ViewRow[] {
       seasonYear,
       viewKey: `championship/pool-${pool.toLowerCase()}`,
       payload: {
-        rows: toStandingsRows(results.championship[pool], nameById),
+        rows: toStandingsRows(results.championship[pool], nameById, slugById),
         updatedAt,
         stale: isViewStale(seasonYear),
         pendingReview,
@@ -160,7 +170,7 @@ export function buildViews(seasonYear: number): ViewRow[] {
         seasonYear,
         viewKey: `sub-league/${type.toLowerCase()}/pool-${pool.toLowerCase()}`,
         payload: {
-          rows: toStandingsRows(results.subLeagues[type][pool], nameById),
+          rows: toStandingsRows(results.subLeagues[type][pool], nameById, slugById),
           updatedAt,
           stale: isViewStale(seasonYear, type),
           pendingReview,
@@ -179,6 +189,7 @@ export function buildViews(seasonYear: number): ViewRow[] {
     const rows = results.olp[type].map((r) => ({
       ...r,
       name: nameById.get(r.holderId) ?? `Holder #${r.holderId}`,
+      slug: slugById.get(r.holderId) ?? String(r.holderId),
     }));
     views.push({
       seasonYear,
@@ -203,7 +214,15 @@ export function buildViews(seasonYear: number): ViewRow[] {
   // and the tournament cap. Reuses the same `updatedAt`/`pendingReview`
   // stamped once above — no second clock read, no extra engine run.
   views.push(
-    ...buildScoreSheetViews(seasonYear, results, nameById, snapshot.tournamentSourceCount, updatedAt, pendingReview),
+    ...buildScoreSheetViews(
+      seasonYear,
+      results,
+      nameById,
+      slugById,
+      snapshot.tournamentSourceCount,
+      updatedAt,
+      pendingReview,
+    ),
   );
 
   // Financials view (Spec 09 §9.3; plans financials/02-readmodel-build.md):
@@ -212,6 +231,18 @@ export function buildViews(seasonYear: number): ViewRow[] {
   // `pendingReview` and a season-wide staleness signal — financials spans
   // every source, like Championship, so it isn't narrowed to one sub-league.
   views.push(buildFinancialsView(seasonYear, results, updatedAt, isViewStale(seasonYear), pendingReview));
+
+  views.push(
+    ...buildSkinsViews(
+      seasonYear,
+      results,
+      nameById,
+      slugById,
+      updatedAt,
+      isViewStale(seasonYear),
+      pendingReview,
+    ),
+  );
 
   // `sub-leagues` meta view (Spec 04 §4.3/§4.5 boundary decision): sourced
   // from the snapshot already loaded above — no separate `event_sources`
@@ -230,7 +261,22 @@ export function buildViews(seasonYear: number): ViewRow[] {
     },
   });
 
-  views.push(buildRoundsView(seasonYear));
+  views.push(buildRoundsView(seasonYear, slugById));
+
+  const roundsPayload = assembleRoundsPayload(seasonYear, slugById);
+  views.push(
+    ...buildPlayersViews(
+      seasonYear,
+      results,
+      snapshot,
+      activeHolders,
+      roundsPayload,
+      slugById,
+      updatedAt,
+      isViewStale(seasonYear),
+      pendingReview,
+    ),
+  );
 
   return views;
 }

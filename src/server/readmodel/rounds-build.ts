@@ -3,7 +3,6 @@
 import "server-only";
 
 import {
-  slugifyName,
   type PublicRoundsPayload,
   type RoundRow,
   type RoundsHolderEntry,
@@ -51,11 +50,10 @@ function latestOfficialRatingByHolder(
   return new Map([...best.entries()].map(([id, { rating }]) => [id, rating]));
 }
 
-/**
- * Build the `rounds` read-model view directly from repositories (Spec 05).
- * Per-round fields are not part of the engine output — see plans chunk 02.
- */
-export function buildRoundsView(seasonYear: number): ViewRow {
+export function assembleRoundsPayload(
+  seasonYear: number,
+  slugById: Map<number, string>,
+): PublicRoundsPayload {
   const holders = listHolders(seasonYear).filter((h) => h.active);
   const events = listEvents(seasonYear);
   const sources = listSources(seasonYear);
@@ -98,7 +96,7 @@ export function buildRoundsView(seasonYear: number): ViewRow {
   const holderEntries: RoundsHolderEntry[] = holders.map((h) => ({
     holderId: h.id,
     name: h.name,
-    slug: slugifyName(h.name),
+    slug: slugById.get(h.id) ?? String(h.id),
     tagNumber: h.tagNumber,
     presentRating: presentRatingByHolder.get(h.id) ?? null,
     rounds: roundsByHolder.get(h.id) ?? [],
@@ -108,17 +106,26 @@ export function buildRoundsView(seasonYear: number): ViewRow {
     hasStaleSource(seasonYear, [slugToType(slug)]),
   );
 
-  const payload: PublicRoundsPayload = {
+  return {
     holders: holderEntries,
     updatedAt: new Date().toISOString(),
     stale: hasStaleSource(seasonYear),
     staleLeagues,
     pendingReview: countPending(seasonYear),
   };
+}
 
+/**
+ * Build the `rounds` read-model view directly from repositories (Spec 05).
+ * Per-round fields are not part of the engine output — see plans chunk 02.
+ */
+export function buildRoundsView(
+  seasonYear: number,
+  slugById: Map<number, string>,
+): ViewRow {
   return {
     seasonYear,
     viewKey: "rounds",
-    payload,
+    payload: assembleRoundsPayload(seasonYear, slugById),
   };
 }

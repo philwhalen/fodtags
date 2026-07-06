@@ -3,6 +3,7 @@ import type { SubLeagueWindow } from "./current-sub-league";
 
 /** Published standings row (Spec 04 §4.2 + §2.6 tie-break flag). */
 export interface PublicStandingsRow extends StandingRow {
+  slug: string;
   tieBrokenByTag: boolean;
 }
 
