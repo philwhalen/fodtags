@@ -11,17 +11,24 @@
 // ==========
 // Source: Google Sheet "2026 Field Of Dreams Club Championship Scores"
 //   id 15Iof5XV5sQo7D9BMPS1L4OKWNw9O0iky7ipeu8VxV80, tab "Financials".
-// Sheet last modified: 2026-06-26. Extracted: 2026-07-05.
+// Sheet last modified: 2026-06-26. Extracted: 2026-07-05; ace payout
+// re-verified against the live "Financials" tab 2026-07-06 ($173.53, not the
+// earlier $174.00 approximation — see acePayout / REAL_2026_GOLDEN.aceCents).
 // This is a POINT-IN-TIME SNAPSHOT — the live sheet keeps changing as the
 // season progresses (MID was still being played at extraction time; LATE
 // had not started). Re-extract and refresh this fixture (and the golden
 // constants in `REAL_2026_GOLDEN` / `REAL_2026_TOTALS` below, plus the
 // reconciliation test that asserts them) periodically, not on every read.
 //
-// Sub-league windows at extraction time (per the sheet's own night list):
-//   EARLY: 2026-03-12 .. 2026-05-14 (10 League Nights recorded)
-//   MID:   2026-05-21 .. 2026-06-25 (6 League Nights recorded)
-//   LATE:  2026-07-02 onward — no nights played/recorded yet at extraction.
+// Each sub-league is ONE PDGA event (up to 10 Thursday-night rounds); the
+// season runs two such events so far — EARLY and MID:
+//   EARLY: PDGA 102021, 2026-03-12 .. 2026-05-14 (10 rounds, complete).
+//   MID:   PDGA 104527, 2026-05-21 .. 2026-07-23 (10-round series; 6 nights
+//          had recorded financials at extraction — the sheet had not yet
+//          entered entry fees for round 7 / 2026-07-02 onward).
+//   LATE:  its own PDGA event, not registered/played yet — so it has no
+//          window or nights here. (Do NOT split MID's event by round to
+//          synthesize LATE; LATE arrives with its own event id and data.)
 //
 // `pdgaEventId` values below are placeholders (`REAL-2026-<TYPE>`), not the
 // league's actual PDGA event ids — this fixture is a *financial* validation
@@ -32,10 +39,12 @@ import type { ExpenseCategory, SubLeagueType } from "@/lib";
 
 export interface RealSubLeagueWindowFixture {
   type: SubLeagueType;
-  /** ET calendar date, `YYYY-MM-DD`. */
+  /** ET calendar date, `YYYY-MM-DD` — the sub-league's PDGA event start
+   * (round 1). */
   startDate: string;
-  /** ET calendar date, `YYYY-MM-DD`, or null if not yet known (LATE, not
-   * started at extraction time). */
+  /** ET calendar date, `YYYY-MM-DD`, or null if the event's end is not yet
+   * known. Spans the whole PDGA event (all rounds), not just the nights with
+   * recorded financials. */
   endDate: string | null;
 }
 
@@ -74,8 +83,9 @@ export interface Real2026Fixture {
   /** 2026 carryover balances (Spec 09 §9.2 openings). */
   openings: { reservesOpeningCents: number; aceOpeningCents: number };
   subLeagues: RealSubLeagueWindowFixture[];
-  /** All recorded League Nights, in chronological order. 16 nights at
-   * extraction time: 10 EARLY + 6 MID + 0 LATE. */
+  /** League Nights with recorded financials, in chronological order. 16 at
+   * extraction time: 10 EARLY + 6 MID (MID's later rounds — 2026-07-02 on —
+   * were played but had no entry-fee data entered yet). */
   nights: RealNightFixture[];
   /** Dated tag-sale batches; $20/tag → reserves (Spec 09 §9.1). */
   tagSales: RealTagSaleFixture[];
@@ -93,10 +103,11 @@ export const REAL_2026: Real2026Fixture = {
     aceOpeningCents: 13900, // $139.00
   },
 
+  // One PDGA event per sub-league; MID spans its full 10-round series. LATE
+  // is a separate, not-yet-registered event, so it is intentionally absent.
   subLeagues: [
     { type: "EARLY", startDate: "2026-03-12", endDate: "2026-05-14" },
-    { type: "MID", startDate: "2026-05-21", endDate: "2026-06-25" },
-    { type: "LATE", startDate: "2026-07-02", endDate: null },
+    { type: "MID", startDate: "2026-05-21", endDate: "2026-07-23" },
   ],
 
   // "Financials" tab, per-night paid/ace entry columns.
@@ -112,14 +123,14 @@ export const REAL_2026: Real2026Fixture = {
     { subLeagueType: "EARLY", eventDate: "2026-04-30", paidEntries: 15, aceEntries: 11 },
     { subLeagueType: "EARLY", eventDate: "2026-05-07", paidEntries: 17, aceEntries: 12 },
     { subLeagueType: "EARLY", eventDate: "2026-05-14", paidEntries: 19, aceEntries: 15 },
-    // MID (6 nights; paid totals 96, ace totals 65)
+    // MID, PDGA 104527 rounds 1-6 (paid totals 96, ace totals 65). Rounds 7+
+    // (2026-07-02 on) were played but had no entry-fee data at extraction.
     { subLeagueType: "MID", eventDate: "2026-05-21", paidEntries: 17, aceEntries: 11 },
     { subLeagueType: "MID", eventDate: "2026-05-28", paidEntries: 19, aceEntries: 13 },
     { subLeagueType: "MID", eventDate: "2026-06-04", paidEntries: 18, aceEntries: 12 },
     { subLeagueType: "MID", eventDate: "2026-06-11", paidEntries: 15, aceEntries: 9 },
     { subLeagueType: "MID", eventDate: "2026-06-18", paidEntries: 14, aceEntries: 11 },
     { subLeagueType: "MID", eventDate: "2026-06-25", paidEntries: 13, aceEntries: 9 },
-    // LATE: none yet — sub-league starts 2026-07-02, no nights recorded.
   ],
 
   // "Financials" tab, tag-sale batch block. Sum = 27 tags.
@@ -136,8 +147,8 @@ export const REAL_2026: Real2026Fixture = {
     { saleDate: "2026-06-18", count: 2 },
   ],
 
-  // "Financials" tab, ace-pot payout row.
-  acePayout: { paidDate: "2026-05-07", amountCents: 17400 }, // $174.00
+  // "Financials" tab, ace-pot payout row (col J, 2026-05-07 night).
+  acePayout: { paidDate: "2026-05-07", amountCents: 17353 }, // $173.53
 
   // "Financials" tab, expense block — against Expense Reserves. The sheet
   // does not date these precisely; dates below are sensible in-season
@@ -166,7 +177,8 @@ export const REAL_2026: Real2026Fixture = {
  * - Ace: openings.aceOpeningCents + 100¢ × total ace entries − ace payouts.
  *   The sheet's Leaderboard "Ace Pot: $111" nets out a $55 ace-backup
  *   reserve that our spec does NOT model; our ace FUND is the gross
- *   balance, which matches the sheet's own "Total Ace Pot Balance: $165".
+ *   balance, which matches the sheet's own "Total Ace Pot Balance: $165.47"
+ *   (13900 + 100×200 − 17353).
  * - Reserves: openings.reservesOpeningCents + 220¢ × paidEntries + 2000¢ ×
  *   tag count − expenses.
  * - Total cash: sum of every fund above.
@@ -174,9 +186,9 @@ export const REAL_2026: Real2026Fixture = {
 export const REAL_2026_GOLDEN = {
   olpCents: { EARLY: 16000, MID: 9600, LATE: 0 }, // $160 / $96 / $0
   skinsCents: { A: 47787, B: 23893 }, // $477.87 / $238.93
-  aceCents: 16500, // $165.00
+  aceCents: 16547, // $165.47 (matches sheet's Total Ace Pot Balance)
   reservesCents: 10912, // $109.12
-  totalCashCents: 124692, // $1,246.92
+  totalCashCents: 124739, // $1,247.39 (Σ funds)
 } as const;
 
 /** Fixture-level entry-count totals across all recorded nights — a

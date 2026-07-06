@@ -16,7 +16,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "NODE_OPTIONS=--conditions=react-server tsx scripts/db-migrate.ts",
     "db:seed": "NODE_OPTIONS=--conditions=react-server tsx scripts/db-seed.ts",
-    "db:seed:real": "NODE_OPTIONS=--conditions=react-server tsx scripts/db-seed-real.ts"
+    "db:seed:real": "NODE_OPTIONS=--conditions=react-server tsx scripts/db-seed-real.ts",
+    "db:seed:real-financials": "NODE_OPTIONS=--conditions=react-server tsx scripts/seed-real-financials.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",
