@@ -6,19 +6,27 @@ import { sqlite } from "@server/db/client";
 import { upsertLeagueNight } from "@server/db/repositories/events";
 import { upsertResult } from "@server/db/repositories/eventResults";
 import type { MatchResult } from "@server/ingestion/match";
-import type { NormalizedEventResult } from "@server/ingestion/normalize";
+import type { NormalizedEntrantResult, NormalizedEventResult } from "@server/ingestion/normalize";
 
 export interface PersistSource {
   id: number;
   type: string;
 }
 
-function holderIdByPdgaNumber(matchResult: MatchResult): Map<number, number> {
-  const map = new Map<number, number>();
+/**
+ * Correlate each matched entrant back to its holder by ENTRANT OBJECT
+ * IDENTITY, not by PDGA number. `match()` runs over the same entrant object
+ * references the persist loop iterates (pipeline flatMaps
+ * `normalized.rounds[].entrants` straight into `match`), so identity is a
+ * stable key — and, unlike PDGA number, it also carries the holderId for a
+ * tag holder who played as a guest with no PDGA number on file
+ * (name-matched but null `pdgaNumber`). Keying by PDGA number silently
+ * dropped those matches.
+ */
+function holderIdByEntrant(matchResult: MatchResult): Map<NormalizedEntrantResult, number> {
+  const map = new Map<NormalizedEntrantResult, number>();
   for (const { holderId, entrant } of matchResult.matched) {
-    if (entrant.pdgaNumber !== null) {
-      map.set(entrant.pdgaNumber, holderId);
-    }
+    map.set(entrant, holderId);
   }
   return map;
 }
@@ -34,7 +42,7 @@ export function persistEvent(
   normalized: NormalizedEventResult,
   matchResult: MatchResult,
 ): number {
-  const holderByPdga = holderIdByPdgaNumber(matchResult);
+  const holderByEntrant = holderIdByEntrant(matchResult);
   let roundsPersisted = 0;
 
   const runPersist = sqlite.transaction(() => {
@@ -48,8 +56,7 @@ export function persistEvent(
       });
 
       for (const entrant of round.entrants) {
-        const holderId =
-          entrant.pdgaNumber !== null ? (holderByPdga.get(entrant.pdgaNumber) ?? null) : null;
+        const holderId = holderByEntrant.get(entrant) ?? null;
 
         upsertResult({
           seasonYear,

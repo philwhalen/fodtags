@@ -24,8 +24,8 @@ let insertHolder: (input: {
   tagNumber: number;
   pool: "A" | "B";
   entryDate: string;
-  pdgaNumber: number;
-  ratingAtEntry: number;
+  pdgaNumber: number | null;
+  ratingAtEntry: number | null;
   pdgaMembership: boolean;
 }) => number;
 let listEvents: (seasonYear: number) => Array<{
@@ -51,6 +51,7 @@ let dbSelectResults: () => unknown[];
 
 let earlySourceId: number;
 let fixtureHolderId: number;
+let guestHolderId: number;
 
 beforeAll(async () => {
   tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "fodtags-persist-"));
@@ -120,6 +121,22 @@ beforeAll(async () => {
     ratingAtEntry: 952,
     pdgaMembership: true,
   });
+
+  // A tag holder who plays as a guest with NO PDGA number on file — the
+  // 104527 fixture carries "Nick Pixley" as a null-pdgaNumber entrant.
+  // Regression guard: name-matching must still attribute his scored rows to
+  // this holder (persist previously keyed matches by pdgaNumber only and
+  // silently dropped null-pdga matches).
+  guestHolderId = insertHolder({
+    seasonYear: SEASON_YEAR,
+    name: "Nick Pixley",
+    tagNumber: 16,
+    pool: "B",
+    entryDate: "2026-01-15T00:00:00.000Z",
+    pdgaNumber: null,
+    ratingAtEntry: null,
+    pdgaMembership: false,
+  });
 });
 
 afterAll(async () => {
@@ -155,6 +172,19 @@ describe("persist: fixture source → events/event_results", () => {
     expect(matchedRow).toBeDefined();
     expect(matchedRow!.holderId).toBe(fixtureHolderId);
     expect(matchedRow!.rawScoreToPar).toBe(-8);
+  });
+
+  it("links a name-matched holder who has no PDGA number (null-pdga guest)", async () => {
+    resetSingleFlight();
+    await runRefresh({ trigger: "manual", seasonYear: SEASON_YEAR });
+
+    // "Nick Pixley" appears as a null-pdgaNumber entrant in round 1 of the
+    // 104527 fixture; his result row must carry the guest holder's id.
+    const round1Event = earlyEvents().find((e) => e.roundOrdinal === 1)!;
+    const guestRow = listResultsByEvent(round1Event.id).find(
+      (r) => r.pdgaNumber === null && r.holderId === guestHolderId,
+    );
+    expect(guestRow).toBeDefined();
   });
 
   it("is idempotent across consecutive refreshes", async () => {

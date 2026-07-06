@@ -38,6 +38,31 @@ describe("pdgaFetch", () => {
     expect(response.status).toBe(200);
   });
 
+  it("retries on 429 (Too Many Requests) and returns the eventual 200", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("rate limited", { status: 429, headers: { "Retry-After": "0" } }))
+      .mockResolvedValueOnce(new Response('{"ok":true}', { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await pdgaFetch("https://www.pdga.com/test", { maxRetries: 2 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(response.status).toBe(200);
+  });
+
+  it("returns the 429 after exhausting retries", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response("rate limited", { status: 429, headers: { "Retry-After": "0" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await pdgaFetch("https://www.pdga.com/test", { maxRetries: 1 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(response.status).toBe(429);
+  });
+
   it("throws on timeout when the request does not settle in time", async () => {
     const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
       return new Promise((_resolve, reject) => {

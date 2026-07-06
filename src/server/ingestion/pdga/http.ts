@@ -8,8 +8,19 @@ const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
-const DEFAULT_MAX_RETRIES = 3;
-const DEFAULT_RATE_LIMIT_MS = 500;
+const DEFAULT_MAX_RETRIES = 5;
+
+/**
+ * Minimum spacing between requests to the same host. A large PDGA event
+ * (many divisions × rounds) can otherwise trip PDGA's server-side rate
+ * limit (HTTP 429) mid-scrape. Overridable via `PDGA_RATE_LIMIT_MS` for
+ * stubborn events without a redeploy; defaults conservative — a weekly
+ * refresh taking an extra minute or two is fine (Spec 03 §3.8).
+ */
+const DEFAULT_RATE_LIMIT_MS = ((): number => {
+  const parsed = Number(process.env.PDGA_RATE_LIMIT_MS);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1200;
+})();
 
 const lastRequestByHost = new Map<string, number>();
 
@@ -75,6 +86,33 @@ function buildHeaders(init: PdgaFetchInit): Headers {
 
 function isRetryableStatus(status: number): boolean {
   return status >= 500;
+}
+
+/** Cap on how long we'll honor a 429 `Retry-After` before giving up, so a
+ * hostile/absurd value can't stall a refresh indefinitely. */
+const MAX_RETRY_AFTER_MS = 30_000;
+
+/**
+ * Wait to use before retrying a 429 (Too Many Requests). Honors the
+ * `Retry-After` header when present (delta-seconds or HTTP-date form),
+ * capped at `MAX_RETRY_AFTER_MS`; otherwise falls back to exponential
+ * backoff. PDGA Live throttles a burst of round/division requests with 429
+ * mid-scrape, and Spec 03 §3.8 requires the scraper to be resilient to
+ * that rather than failing the whole source on the first 429.
+ */
+function retryAfterMs(response: Response, attempt: number): number {
+  const header = response.headers.get("Retry-After");
+  if (header) {
+    const seconds = Number(header);
+    if (Number.isFinite(seconds)) {
+      return Math.min(Math.max(seconds, 0) * 1000, MAX_RETRY_AFTER_MS);
+    }
+    const dateMs = Date.parse(header);
+    if (!Number.isNaN(dateMs)) {
+      return Math.min(Math.max(dateMs - Date.now(), 0), MAX_RETRY_AFTER_MS);
+    }
+  }
+  return backoffMs(attempt);
 }
 
 function shouldEscalateToPlaywright(deps: PdgaFetchDeps): boolean {
@@ -146,6 +184,11 @@ export async function pdgaFetch(
       if (response.status === 403 && shouldEscalateToPlaywright(deps)) {
         const fallback = deps.playwrightFallback ?? defaultPlaywrightFallback;
         return fallback(urlObj, init);
+      }
+
+      if (response.status === 429 && attempt < maxRetries) {
+        await sleep(retryAfterMs(response, attempt));
+        continue;
       }
 
       if (isRetryableStatus(response.status) && attempt < maxRetries) {

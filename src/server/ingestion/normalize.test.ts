@@ -64,6 +64,35 @@ describe("normalize (104527 fixtures)", () => {
     expect(() => normalize(doctored, "MID")).toThrow(RoundAttributionError);
   });
 
+  it("omits a row with a null RoundtoPar instead of failing the round", async () => {
+    // Real PDGA data (e.g. event 102021 MA3 R5) carries null RoundtoPar/ToPar
+    // for registered players with no score that round. Such a row must be
+    // dropped, not crash normalization.
+    const payload = await fixtureSource.fetchEvent("104527");
+    const round1 = payload.rounds.find((r) => r.Round === 1);
+    if (!round1) throw new Error("fixture missing round 1");
+    const sample = round1.scores[0];
+    if (!sample) throw new Error("fixture round 1 has no scores");
+    const doctored: RawEventPayload = {
+      ...payload,
+      rounds: payload.rounds.map((r) =>
+        r.Round === 1
+          ? {
+              ...r,
+              scores: [
+                ...r.scores,
+                { ...sample, Name: "No Score Ghost", PDGANum: 999999, RoundtoPar: null, ToPar: null },
+              ],
+            }
+          : r,
+      ),
+    };
+
+    const result = normalize(doctored, "MID");
+    const round1Out = result.rounds.find((r) => r.roundOrdinal === 1);
+    expect(round1Out?.entrants.some((e) => e.displayName === "No Score Ghost")).toBe(false);
+  });
+
   it("normalizes a guest entrant with pdgaNumber null", async () => {
     const payload = await fixtureSource.fetchEvent("104527");
     const result = normalize(payload, "MID");

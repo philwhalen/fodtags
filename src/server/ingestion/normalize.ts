@@ -73,7 +73,10 @@ function mapEntrant(
   score: RawScoreEntry,
   highestCompletedRound: number,
 ): NormalizedEntrantResult | null {
-  if (score.HasRoundScore !== 1) {
+  // No score for this round (absent / not yet played) — excluded from the
+  // round's results. `RoundtoPar` is null in that case (nullable in real
+  // PDGA data), so guard on it too to keep `rawScoreToPar` a number.
+  if (score.HasRoundScore !== 1 || score.RoundtoPar === null) {
     return null;
   }
 

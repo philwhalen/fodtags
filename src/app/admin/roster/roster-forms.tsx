@@ -87,7 +87,14 @@ export function CreateHolderForm() {
   );
 }
 
-export function HolderRow({ holder }: { holder: Holder }) {
+export function HolderRow({
+  holder,
+  currentRating,
+}: {
+  holder: Holder;
+  /** Latest official rating from the monthly pull; null if never pulled. */
+  currentRating: number | null;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -147,7 +154,7 @@ export function HolderRow({ holder }: { holder: Holder }) {
               />
             </label>
             <label className="admin-field">
-              Rating{" "}
+              Rating at entry{" "}
               <input
                 name="ratingAtEntry"
                 type="number"
@@ -194,7 +201,7 @@ export function HolderRow({ holder }: { holder: Holder }) {
       <td>{holder.pool}</td>
       <td>{holder.entryDate}</td>
       <td className="admin-num">{holder.pdgaNumber ?? "—"}</td>
-      <td className="admin-num">{holder.ratingAtEntry ?? "—"}</td>
+      <td className="admin-num">{currentRating ?? "—"}</td>
       <td>
         <span className="admin-status" data-status={holder.active ? "yes" : "no"}>
           {holder.active ? "yes" : "no"}

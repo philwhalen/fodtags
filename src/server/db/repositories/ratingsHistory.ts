@@ -2,7 +2,7 @@
 // specs/12-Architecture.md §12.1 / §12.4.
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@server/db/client";
 import { ratingsHistory } from "@server/db/schema";
@@ -56,4 +56,29 @@ export function listRatingsByHolder(holderId: number) {
 
 export function listRatingsBySeason(seasonYear: number) {
   return db.select().from(ratingsHistory).where(eq(ratingsHistory.seasonYear, seasonYear)).all();
+}
+
+/**
+ * Latest *official* rating per holder for a season, keyed by `holderId`.
+ * "Latest" = greatest `effective_date` (lexicographic on `YYYY-MM-DD` is
+ * chronological). Powers the admin roster "Rating" column, which reflects the
+ * monthly official pull rather than the static `rating_at_entry`.
+ */
+export function latestOfficialRatingByHolder(seasonYear: number): Map<number, number> {
+  const rows = db
+    .select()
+    .from(ratingsHistory)
+    .where(and(eq(ratingsHistory.seasonYear, seasonYear), eq(ratingsHistory.official, true)))
+    .all();
+
+  const latestDate = new Map<number, string>();
+  const result = new Map<number, number>();
+  for (const row of rows) {
+    const prior = latestDate.get(row.holderId);
+    if (prior === undefined || row.effectiveDate > prior) {
+      latestDate.set(row.holderId, row.effectiveDate);
+      result.set(row.holderId, row.rating);
+    }
+  }
+  return result;
 }

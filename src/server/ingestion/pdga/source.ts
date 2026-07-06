@@ -37,8 +37,10 @@ export interface RawScoreEntry {
   Name: string;
   FirstName: string;
   LastName: string;
-  RoundtoPar: number;
-  ToPar: number;
+  // Null for a player with no score this round (HasRoundScore !== 1); see
+  // the schema comment in pdga/schema.ts.
+  RoundtoPar: number | null;
+  ToPar: number | null;
   RoundRating: number | null;
   Rating: number | null;
   Completed: number;

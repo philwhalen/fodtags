@@ -13,8 +13,12 @@ const rawScoreEntrySchema = z
     Name: z.string(),
     FirstName: z.string(),
     LastName: z.string(),
-    RoundtoPar: z.number(),
-    ToPar: z.number(),
+    // Nullable in real PDGA data: a player registered in a division but with
+    // no score for this round (HasRoundScore !== 1 — e.g. absent / not yet
+    // played) carries null here. `normalize.mapEntrant` already skips those
+    // rows, so a null score is not an error and must not abort the source.
+    RoundtoPar: z.number().nullable(),
+    ToPar: z.number().nullable(),
     RoundRating: z.number().nullable(),
     Rating: z.number().nullable(),
     Completed: z.number(),

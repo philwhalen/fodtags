@@ -1,5 +1,6 @@
 import { SEASON_YEAR } from "@server/admin/context";
 import { listHolders } from "@server/db/repositories/tagHolders";
+import { latestOfficialRatingByHolder } from "@server/db/repositories/ratingsHistory";
 import { listSwitchesBySeason } from "@server/db/repositories/poolSwitches";
 
 import { CreateHolderForm, HolderRow, PoolSwitchForm } from "./roster-forms";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminRosterPage() {
   const holders = listHolders(SEASON_YEAR);
   const switches = listSwitchesBySeason(SEASON_YEAR);
+  const latestRatings = latestOfficialRatingByHolder(SEASON_YEAR);
 
   return (
     <>
@@ -34,7 +36,11 @@ export default async function AdminRosterPage() {
             </thead>
             <tbody>
               {holders.map((holder) => (
-                <HolderRow key={holder.id} holder={holder} />
+                <HolderRow
+                  key={holder.id}
+                  holder={holder}
+                  currentRating={latestRatings.get(holder.id) ?? null}
+                />
               ))}
             </tbody>
           </table>

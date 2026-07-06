@@ -44,20 +44,26 @@ export function FilterableScoreSheet({
   }, [view.holders, query]);
 
   const trimmedQuery = query.trim();
+  // Depend on the string *value*, not the `useSearchParams()` object: each
+  // `router.replace` hands back a fresh object reference, so keeping the object
+  // in the deps would re-fire this effect in a ~300ms loop.
+  const searchParamsString = searchParams.toString();
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParamsString);
       if (trimmedQuery) {
         params.set("q", trimmedQuery);
       } else {
         params.delete("q");
       }
       const qs = params.toString();
-      router.replace((qs ? `${pathname}?${qs}` : pathname) as Route);
+      // `scroll: false` — this is a URL sync, not navigation; it must never
+      // yank the viewport back to the top (breaks in-page hash anchors).
+      router.replace((qs ? `${pathname}?${qs}` : pathname) as Route, { scroll: false });
     }, 300);
     return () => clearTimeout(timeout);
-  }, [trimmedQuery, pathname, router, searchParams]);
+  }, [trimmedQuery, pathname, router, searchParamsString]);
 
   return (
     <div className="standings-filter">

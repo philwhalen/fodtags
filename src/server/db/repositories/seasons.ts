@@ -15,3 +15,11 @@ import { seasons } from "@server/db/schema";
 export function getSeason(year: number) {
   return db.select().from(seasons).where(eq(seasons.year, year)).get();
 }
+
+/** Idempotently ensure a season row exists (INSERT ... ON CONFLICT DO
+ * NOTHING on the `year` primary key). Returns the number of rows inserted
+ * (0 if it already existed). */
+export function ensureSeason(year: number): number {
+  return db.insert(seasons).values({ year }).onConflictDoNothing({ target: seasons.year }).run()
+    .changes;
+}

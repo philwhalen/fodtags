@@ -61,9 +61,23 @@ export async function register(): Promise<void> {
   // table's natural key, so a re-run (e.g. every boot) changes nothing;
   // `counts` reports how many rows each insert actually affected (0 after
   // the first run) as the idempotency signal in the logs.
-  const { seed } = await import("@server/db/seed");
-  const counts = seed();
-  logger.info({ event: "db.seed", counts }, "seed complete");
+  //
+  // `SEED_SYNTHETIC=false` opts out of the synthetic fixture (used for the
+  // real-data validation run — see scripts/seed-real-roster.ts). In that
+  // mode we still ensure the 2026 season row exists so the admin console
+  // has a season to attach event sources to; the real roster is loaded
+  // separately via `npm run db:seed:real-roster`. Read from process.env
+  // directly (not the Zod config) to avoid a `coerce.boolean` truthiness
+  // trap on the string "false".
+  if (process.env.SEED_SYNTHETIC === "false") {
+    const { ensureSeason } = await import("@server/db/repositories/seasons");
+    ensureSeason(2026);
+    logger.info({ event: "db.seed", counts: { skipped: "synthetic" } }, "synthetic seed skipped (SEED_SYNTHETIC=false)");
+  } else {
+    const { seed } = await import("@server/db/seed");
+    const counts = seed();
+    logger.info({ event: "db.seed", counts }, "seed complete");
+  }
 
   // Bootstrap the first director (CLAUDE.md "Auth via Auth.js Google OAuth
   // against a `directors` email allowlist"; specs/12-Architecture.md §12.8):
