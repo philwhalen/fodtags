@@ -130,8 +130,10 @@ real-data reconciliation fixture (`real-2026.ts` + `db:seed:real`) that reproduc
 sheet's own totals to the cent ($1,246.92 total club cash) — engine untouched. Implemented via
 Sonnet 5 sub-agents per sub-plan (CLAUDE.md Stage 3 model-selection guidance), Opus orchestrating.
 
-### Dev Spike — Local admin bypass for event-source configuration
+### Dev Spike — Local admin bypass for event-source configuration ✅ complete
 _Not a product feature: dev-only tooling, so implemented directly (no four-stage spec-driven workflow — CLAUDE.md "Work that does not change product behavior is done directly"). Small, time-boxed._
+
+_Done: an opt-in, fail-closed `DEV_AUTH_BYPASS` flag (`config.devAuthBypassEnabled` = `DEV_AUTH_BYPASS=true` **AND** `NODE_ENV=development`) wires a dev-only NextAuth `Credentials` provider (`dev-bypass`) that one-click signs in as `BOOTSTRAP_DIRECTOR_EMAIL`. It flows through the **same** `signIn` allowlist gate and `jwt`/`session` callbacks, so the resulting signed JWT carries `isDirector` and both enforcement points (Edge `src/middleware.ts` token check + `@server/auth` callbacks) pass unchanged — no middleware escape hatch, no new public surface, production wiring untouched. Verified end-to-end (bypass sign-in → `/admin/events` 200, `/api/admin/refresh` 200) and the guard proven closed for `production`/`test`/flag-off. Documented in `.env`/`.env.example`._
 
 **Motivation.** The admin console is gated behind Auth.js **Google OAuth** against the `directors` allowlist, enforced at two points: the Edge `src/middleware.ts` (`token.isDirector` on the signed JWT) and the Auth.js callbacks in `src/server/auth/index.ts`. Local dev only has **dummy Google OAuth credentials** (`.env`), so real sign-in can't complete and `/admin/*` is unreachable — which blocks configuring the three sub-league `event_sources`. Those need attention: source #1 (`104527`) is a **real, live** event but is mislabeled `EARLY` with the wrong dates/divisions (it's actually the May 21 – Jul 23 event exposing only `MA1`), and sources #2/#3 are **placeholder** IDs (`PLACEHOLDER-MID-2026` / `PLACEHOLDER-LATE-2026`) that fail every live refresh.
 
@@ -150,9 +152,9 @@ Aggregates all five prior views → built last.
 
 ## Next planning pass
 
-First, the **Dev Spike — Local admin bypass** above is a quick, self-contained unblock (dev tooling, no spec-driven workflow) that can be knocked out independently — it lets the director reach `/admin/events` to fix the Early/Mid/Late event-source configuration and drive a real live refresh.
+The **Dev Spike — Local admin bypass** above is done ✅ — the director can now reach `/admin/events` locally to fix the Early/Mid/Late event-source configuration and drive a real live refresh.
 
-Then take **Feature 6 — Player Profiles** ([spec 08](../specs/08-Feature-Player-Profiles.md)) into the
+Next, take **Feature 6 — Player Profiles** ([spec 08](../specs/08-Feature-Player-Profiles.md)) into the
 full spec-driven workflow. It is the **last product feature** and aggregates all five prior views —
 standings/Championship rank (Feature 1), rounds & ratings (Feature 2), OLP (Feature 3), the points
 breakdown / score sheet (Feature 4), and the per-holder money picture (Feature 5) — into one
@@ -164,4 +166,4 @@ with the standard freshness/projected-final treatment and deep-linkable holder s
 during Specify whether any holder-scoped slice of the money/OLP views needs adding to `buildViews`.
 After Feature 6, only **Common Work D — Hardening & launch** remains.
 
-_Common Work A/B/C and Features 1–5 completed — see the ✅ markers above._
+_Common Work A/B/C, Features 1–5, and the Dev Spike (local admin bypass) completed — see the ✅ markers above._
