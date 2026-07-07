@@ -27,10 +27,11 @@ The admin console has no public link today; a director must know the `/admin` UR
 
 ## 10.2 Roster & tag management
 
-- CRUD tag holders: name, **tag number**, **pool**, **entry date**, **PDGA number**, **rating at entry**, active flag, PDGA-membership flag.
+- CRUD tag holders: name, **tag number**, **pool**, **entry date**, **PDGA number**, **rating at entry**, active flag, PDGA-membership flag, **confirmed flag**.
 - Enforce eligibility rules on input ([Spec 02 §2.2](./02-Domain-Model-and-Scoring.md#22-pools--eligibility)): warn if assigning Pool B to a ≥900-rated player; support director placement of unrated players.
 - **Pool switches**: recorded with effective date; forfeits pre-switch points (engine honors this) and is flagged as director-approved.
-- Tag numbers must be unique (they drive tie-breaks).
+- **Provisional (auto-added) holders** ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching--auto-add-app-bootstraps-admin-confirms)) appear in the roster as `confirmed = false` with **no tag number**; they are resolved through the player review & confirmation queue (§10.4), which is the primary place a director confirms/edits them.
+- Tag number is **optional** (a provisional holder has none until assigned) but must be **unique when present** — tag numbers drive tie-breaks ([Spec 02 §2.6](./02-Domain-Model-and-Scoring.md#26-tie-breakers)). An unassigned tag number sorts last in tie-breaks.
 
 ## 10.3 PDGA event configuration
 
@@ -39,12 +40,19 @@ The admin console has no public link today; a director must know the `/admin` UR
 - Add tournaments / the FOD Open as they're scheduled.
 - Set the **tournament count** context that drives the best-2 vs best-3 cap (or derive from registered tournament events).
 
-## 10.4 Player matching review queue
+## 10.4 Player review & confirmation queue
 
-- Surfaces PDGA entrants that didn't confidently auto-match to a holder ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching-admin-maps-app-assists)). Exact-PDGA-number and unique-normalized-name entrants auto-link and never appear here; only **unmatched** (zero name matches) and **ambiguous** (two or more) entrants queue.
-- Admin actions: **link** to an existing holder, **create** a holder, or **mark as non-holder** (excluded from points).
-- **All three resolutions are sticky** across future refreshes (keyed by PDGA number) — including "non-holder", so an ignored entrant doesn't re-queue every week.
-- A count of pending matches is visible and feeds the public data-quality banners.
+This queue has two kinds of entries, both keyed by PDGA number and both surfaced from ingestion ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching--auto-add-app-bootstraps-admin-confirms)). Exact-PDGA-number and unique-normalized-name entrants auto-link and never appear here.
+
+**A. Provisional holders awaiting confirmation** — new entrants (PDGA # present, zero holder matches) that the app **auto-added** as provisional holders. They already score, flagged pending. The queue is a **streamlined confirmation screen**, not a data-entry form: it shows the scrape-seeded record (name, PDGA #, entry date, seeded rating, PDGA-membership, round count so far) and offers three actions:
+  - **Confirm** — accept the record and set the two things the scrape can't supply: **pool** (defaulted A; the <900-at-entry Pool B warning from §10.2 applies) and **tag number** (optional — leave blank if the physical tag isn't bought yet; unique when set). The director may also correct name / entry date / rating in the same step. Sets `confirmed = true` and clears the pending marker.
+  - **Merge into existing holder** — the entrant is actually an existing holder (name changed, PDGA # not previously on file). Links the PDGA # to the chosen holder, **re-points the provisional record's results** to that holder, and removes the provisional record. (This is the "link" action for a mistakenly-auto-added record.)
+  - **Exclude (mark as non-holder)** — the entrant is a guest, not a league member. Removes the provisional record from scoring, reverts its results to a minimal non-holder record, and records a sticky "non-holder" decision so it doesn't re-add next week.
+
+**B. Entrants needing a link decision** — **ambiguous** (2+ name matches) and **PDGA-less** entrants, which are **not** auto-added. Admin actions as before: **link** to an existing holder, **create** a holder, or **mark as non-holder**.
+
+- **All resolutions are sticky** across future refreshes (keyed by PDGA number) — including auto-add, confirm, merge, link, and non-holder — so nothing re-queues or re-adds every week.
+- A count of pending items (provisional-to-confirm + link-decisions) is visible and feeds the public data-quality banners ([Spec 04 §4.4](./04-Feature-Leaderboards.md#44-states)).
 
 ## 10.5 Manual adjustments & overrides
 
@@ -79,6 +87,7 @@ Per [Spec 09 §9.2](./09-Financials.md#92-whats-computed-vs-entered) — the dir
 ## Acceptance criteria
 
 - A director can register 3 sub-league events + tournaments, build the roster with tag numbers/pools/PDGA#s, resolve unmatched players, and see correct public standings after a refresh.
+- A brand-new PDGA entrant (PDGA # present, no holder match) is **auto-added as a provisional holder** on refresh, scores from its first round with a "pending confirmation" marker, and appears in the review queue; **confirming** it (setting pool + optional tag number) clears the marker, while **merge** or **exclude** removes the provisional record and re-points/reverts its results. All four outcomes are sticky.
 - Cancelling a League Night zeroes its points everywhere including OLP counts.
 - A pool switch forfeits prior points and is reflected after recompute.
 - Recording a night's paid + ace entry counts, tag sales, opening balances, payouts, and expenses produces the correct fund balances and ledger ([Spec 09](./09-Financials.md)); an ace win that violates the $50 non-holder cap or predates the recipient's tag purchase is rejected.

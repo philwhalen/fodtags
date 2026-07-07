@@ -146,7 +146,9 @@ describe("read model: build -> publish -> read", () => {
 
 describe("read model: rounds view", () => {
   let buildRoundsView: (seasonYear: number, slugById: Map<number, string>) => ViewRow;
-  let listHolders: (seasonYear: number) => { id: number; name: string; tagNumber: number; active: boolean }[];
+  let listHolders: (
+    seasonYear: number,
+  ) => { id: number; name: string; tagNumber: number | null; active: boolean }[];
   let listEvents: (seasonYear: number) => { id: number; label: string; canceled: boolean }[];
   let listSources: (seasonYear: number) => { id: number; type: string }[];
   let insertRating: (input: {

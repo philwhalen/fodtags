@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { formatTagNumber } from "@/lib";
 import { centsToDollars, dollarsToCents, formatCents, TAG_SALE_CENTS } from "@/lib/money";
 
 import {
@@ -25,7 +26,7 @@ function Feedback({ message }: { message: string | null }) {
 type Holder = {
   id: number;
   name: string;
-  tagNumber: number;
+  tagNumber: number | null;
 };
 
 type TagSale = {
@@ -296,7 +297,7 @@ export function AddPayoutForm({ holders }: { holders: Holder[] }) {
             <option value="">Non-holder</option>
             {holders.map((h) => (
               <option key={h.id} value={h.id}>
-                #{h.tagNumber} {h.name}
+                #{formatTagNumber(h.tagNumber)} {h.name}
               </option>
             ))}
           </select>

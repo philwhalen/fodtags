@@ -36,7 +36,7 @@ export interface PublicScoreSheetHolder {
   holderId: number;
   name: string;
   slug: string;
-  tagNumber: number;
+  tagNumber: number | null;
   rank: number;
   tieBrokenByTag: boolean;
   byType: Record<EventType | "Podium", number>;

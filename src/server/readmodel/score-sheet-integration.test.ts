@@ -34,7 +34,7 @@ let getPublished: (
 ) => { payload: unknown } | undefined;
 let listHolders: (
   seasonYear: number,
-) => { id: number; name: string; tagNumber: number; pool: Pool }[];
+) => { id: number; name: string; tagNumber: number | null; pool: Pool }[];
 let insertHolder: (input: {
   seasonYear: number;
   name: string;

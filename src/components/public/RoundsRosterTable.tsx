@@ -1,7 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 
-import { serializeRoundsFilter } from "@/lib";
+import { formatTagNumber, serializeRoundsFilter } from "@/lib";
 import type { RosterRow, RoundsFilter } from "@/lib";
 
 import { Sparkline } from "./Sparkline";
@@ -59,7 +59,7 @@ export function RoundsRosterTable({
                   {row.name}
                 </Link>
               </td>
-              <td data-label="Tag #">{row.tagNumber}</td>
+              <td data-label="Tag #">{formatTagNumber(row.tagNumber)}</td>
               <td data-label="Present rating">
                 {row.presentRating !== null ? (
                   row.presentRating

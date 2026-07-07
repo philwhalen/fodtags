@@ -24,6 +24,7 @@ import type {
   SkinsRow,
   SubLeagueType,
 } from "@/lib";
+import { tagSortKey } from "@/lib";
 
 import { entriesToOlpPot, largestRemainderPayout, olpScore } from "./olp";
 import { computeFinancials } from "./financial";
@@ -65,7 +66,8 @@ function isSubLeagueType(x: string): x is SubLeagueType {
  * modeled as a single static field per holder (no reassignment history),
  * so unlike pool/rating there is no "as of" resolution needed for them
  * anywhere in this module — every tie-break below just reads
- * `holder.tagNumber` directly. */
+ * `holder.tagNumber` directly (via `tagSortKey`, which sorts a provisional
+ * holder's null tag last — Spec 02 §2.6). */
 function poolAsOf(
   holder: SeasonSnapshotHolder,
   switches: SeasonSnapshotPoolSwitch[],
@@ -120,14 +122,20 @@ interface RankedByScore {
 }
 
 /** Ranks entries best-first by `rawScoreToPar` (lower is better), tie-
- * broken by ascending tag number (Spec 02 §2.6). Always yields a strict
+ * broken by ascending tag number, itself broken by holder ID for two
+ * tagless (provisional) holders (Spec 02 §2.6). Always yields a strict
  * order — ties never share a rank, and every tied entry is flagged. */
 function rankByScore(
-  entries: { holderId: number; tagNumber: number; rawScoreToPar: number }[],
+  entries: { holderId: number; tagNumber: number | null; rawScoreToPar: number }[],
 ): RankedByScore[] {
   const sorted = entries
     .slice()
-    .sort((a, b) => a.rawScoreToPar - b.rawScoreToPar || a.tagNumber - b.tagNumber);
+    .sort(
+      (a, b) =>
+        a.rawScoreToPar - b.rawScoreToPar ||
+        tagSortKey(a.tagNumber) - tagSortKey(b.tagNumber) ||
+        a.holderId - b.holderId,
+    );
   return sorted.map((e, index) => ({
     holderId: e.holderId,
     rank: index + 1,
@@ -138,14 +146,20 @@ function rankByScore(
 }
 
 /** Ranks entries best-first by descending points, tie-broken by ascending
- * tag number (Spec 02 §2.6) — used for the Championship, sub-league, and
+ * tag number, itself broken by holder ID for two tagless (provisional)
+ * holders (Spec 02 §2.6) — used for the Championship, sub-league, and
  * Podium standings. */
 function rankByPoints(
-  entries: { holderId: number; tagNumber: number; pool: Pool; totalPoints: number }[],
+  entries: { holderId: number; tagNumber: number | null; pool: Pool; totalPoints: number }[],
 ): SeasonStandingRow[] {
   const sorted = entries
     .slice()
-    .sort((a, b) => b.totalPoints - a.totalPoints || a.tagNumber - b.tagNumber);
+    .sort(
+      (a, b) =>
+        b.totalPoints - a.totalPoints ||
+        tagSortKey(a.tagNumber) - tagSortKey(b.tagNumber) ||
+        a.holderId - b.holderId,
+    );
   return sorted.map((e, index) => ({
     rank: index + 1,
     holderId: e.holderId,
@@ -272,7 +286,7 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
 
     const eligibleByPool: Record<
       Pool,
-      { holderId: number; tagNumber: number; rawScoreToPar: number }[]
+      { holderId: number; tagNumber: number | null; rawScoreToPar: number }[]
     > = { A: [], B: [] };
 
     for (const result of event.results) {
@@ -388,8 +402,12 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
     if (!subLeague) continue;
     const asOf = subLeague.endDate ?? seasonEndDate;
 
-    const participants: { holderId: number; tagNumber: number; pool: Pool; totalPoints: number }[] =
-      [];
+    const participants: {
+      holderId: number;
+      tagNumber: number | null;
+      pool: Pool;
+      totalPoints: number;
+    }[] = [];
     for (const holder of snapshot.holders) {
       const items = (rawItemsByHolder.get(holder.id) ?? []).filter(
         (i) => !i.forfeited && i.subLeague === type && i.type === "LeagueNight",
@@ -497,7 +515,7 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
 
     interface OlpCandidate {
       holderId: number;
-      tagNumber: number;
+      tagNumber: number | null;
       score: number;
       ratingComponent: number;
       avgToPar: number;
@@ -538,7 +556,12 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
 
     const sorted = candidates
       .slice()
-      .sort((a, b) => a.score - b.score || a.tagNumber - b.tagNumber);
+      .sort(
+        (a, b) =>
+          a.score - b.score ||
+          tagSortKey(a.tagNumber) - tagSortKey(b.tagNumber) ||
+          a.holderId - b.holderId,
+      );
 
     const payouts = largestRemainderPayout(olpPot[type]);
     const payoutByHolder = new Map<number, number>();

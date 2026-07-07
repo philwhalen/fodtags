@@ -26,7 +26,10 @@ export type EventType = "LeagueNight" | "Tournament" | "FODOpen";
 
 export interface SeasonSnapshotHolder {
   id: number;
-  tagNumber: number;
+  /** Null for a provisional (auto-added, not-yet-confirmed) holder — Spec
+   * 03 §3.5/§3.6. Sorts last via `tagSortKey` (Spec 02 §2.6) wherever tag
+   * number drives a tie-break. */
+  tagNumber: number | null;
   /** Pool at initial entry (Spec 02 §2.2); `poolSwitches` may move a
    * holder from here over the course of the season. */
   basePool: Pool;

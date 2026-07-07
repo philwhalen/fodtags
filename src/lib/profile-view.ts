@@ -8,18 +8,22 @@ import type { OlpRow } from "./season-results";
 import { filterHolderRounds, roundTrendSeries } from "./rounds-projection";
 import type { RoundRow, RoundsFilter } from "./rounds-types";
 
-/** One row on the `/players` roster index (Spec 08 §8.3). */
+/** One row on the `/players` roster index (Spec 08 §8.3). `tagNumber` is
+ * null and `provisional` is true for an auto-added holder still awaiting
+ * director confirmation (Spec 03 §3.5/§3.6) — the roster row renders a
+ * "Pending confirmation" badge and "—" for the tag. */
 export interface PlayersIndexRow {
   holderId: number;
   name: string;
   slug: string;
-  tagNumber: number;
+  tagNumber: number | null;
   pool: Pool;
   pdgaNumber: number | null;
   presentRating: number | null;
   championshipRank: number;
   championshipPoints: number;
   roundCount: number;
+  provisional: boolean;
 }
 
 export interface PublicPlayersIndexPayload {
@@ -77,7 +81,7 @@ export interface PublicSkinsRow {
   holderId: number;
   name: string;
   slug: string;
-  tagNumber: number;
+  tagNumber: number | null;
   rank: number;
   totalPoints: number;
   eligible: boolean;
@@ -101,12 +105,14 @@ export interface ProfileMoneyOlp {
   projected: boolean;
 }
 
-/** Published payload for one `players/{slug}` view. */
+/** Published payload for one `players/{slug}` view. `tagNumber` is null and
+ * `provisional` is true for an auto-added holder awaiting director
+ * confirmation (Spec 03 §3.5/§3.6). */
 export interface PublicProfilePayload {
   holderId: number;
   name: string;
   slug: string;
-  tagNumber: number;
+  tagNumber: number | null;
   pool: Pool;
   pdgaNumber: number | null;
   pdgaMembership: boolean;
@@ -123,6 +129,7 @@ export interface PublicProfilePayload {
   olpBySubLeague: Record<SubLeagueType, ProfileOlpSubLeagueRow | null>;
   moneySkins: ProfileMoneySkins;
   moneyOlp: ProfileMoneyOlp[];
+  provisional: boolean;
   updatedAt: string;
   stale: boolean;
   pendingReview: number;
@@ -163,7 +170,7 @@ export interface ProfileOlpSectionView {
 export interface ProfileView {
   header: {
     name: string;
-    tagNumber: number;
+    tagNumber: number | null;
     pool: Pool;
     poolLabel: string;
     presentRating: number | null;
@@ -174,6 +181,10 @@ export interface ProfileView {
     olpIneligibleReason: string | null;
     skinsQualified: boolean;
     skinsIneligibilityReason: string | null;
+    /** True for an auto-added holder still awaiting director confirmation
+     * (Spec 03 §3.5/§3.6) — the header renders a "Pending confirmation"
+     * text badge among the eligibility flags (Spec 08 §8.1). */
+    provisional: boolean;
   };
   championship: {
     overall: ProfileStandingSnapshot;
@@ -337,6 +348,7 @@ export function projectProfile(
       olpIneligibleReason: payload.olpIneligibleReasonCurrent,
       skinsQualified: payload.skinsQualified,
       skinsIneligibilityReason: payload.skinsIneligibilityReason,
+      provisional: payload.provisional,
     },
     championship: {
       overall: payload.championship,

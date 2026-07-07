@@ -8,6 +8,7 @@ import {
   poolBAccrualActive,
   profilePointsFromByType,
   splitSkinsPayoutCents,
+  tagSortKey,
   type PlayersIndexRow,
   type ProfileOlpSubLeagueRow,
   type ProfileStandingSnapshot,
@@ -79,7 +80,7 @@ function compareIndexRows(a: PlayersIndexRow, b: PlayersIndexRow): number {
   const aRating = a.presentRating;
   const bRating = b.presentRating;
   if (aRating === null && bRating === null) {
-    return a.tagNumber - b.tagNumber;
+    return tagSortKey(a.tagNumber) - tagSortKey(b.tagNumber) || a.holderId - b.holderId;
   }
   if (aRating === null) {
     return 1;
@@ -90,7 +91,7 @@ function compareIndexRows(a: PlayersIndexRow, b: PlayersIndexRow): number {
   if (bRating !== aRating) {
     return bRating - aRating;
   }
-  return a.tagNumber - b.tagNumber;
+  return tagSortKey(a.tagNumber) - tagSortKey(b.tagNumber) || a.holderId - b.holderId;
 }
 
 export function buildPlayersViews(
@@ -122,6 +123,7 @@ export function buildPlayersViews(
       championshipRank: championship.rank,
       championshipPoints: championship.points,
       roundCount: countLeagueNightRounds(roundsEntry?.rounds ?? []),
+      provisional: !holder.confirmed,
     };
   });
   indexRows.sort(compareIndexRows);
@@ -226,6 +228,7 @@ export function buildPlayersViews(
           projected: !results.podium[type].complete,
         };
       }),
+      provisional: !holder.confirmed,
       updatedAt,
       stale,
       pendingReview,

@@ -22,11 +22,11 @@ let updateSource: (id: number, patch: { active?: boolean }) => void;
 let insertHolder: (input: {
   seasonYear: number;
   name: string;
-  tagNumber: number;
+  tagNumber: number | null;
   pool: "A" | "B";
   entryDate: string;
-  pdgaNumber: number;
-  ratingAtEntry: number;
+  pdgaNumber: number | null;
+  ratingAtEntry: number | null;
   pdgaMembership: boolean;
 }) => number;
 let listHolders: (seasonYear: number) => Array<{ id: number; name: string; pdgaNumber: number | null }>;
@@ -125,6 +125,63 @@ beforeAll(async () => {
     pdgaNumber: MATCHED_PDGA,
     ratingAtEntry: 952,
     pdgaMembership: true,
+  });
+
+  // Sub-plan 03 (auto-add): a PDGA#-having entrant with zero name hits is
+  // no longer "unmatched" — it auto-adds as a provisional holder on
+  // refresh (see match.ts/pipeline.ts). Every other real entrant in the
+  // 104527 fixture besides "Anthony D'Aiuto" above falls in exactly that
+  // bucket, so this suite's admin-queue coverage (linkEntrant/
+  // markNonHolder against a genuinely UNRESOLVED entrant) needs at least
+  // one real fixture name forced into the surviving "ambiguous" (2+ name
+  // hits) unmatched category instead. Two synthetic holders sharing "Josh
+  // Goheen"'s normalized name do that for `UNMATCHED_PDGA` without
+  // otherwise changing this test's expectations (appearanceCount etc. come
+  // from `event_results`, unaffected by which holders share the name).
+  insertHolder({
+    seasonYear: SEASON_YEAR,
+    name: "Josh Goheen",
+    tagNumber: null,
+    pool: "A",
+    entryDate: "2026-01-15T00:00:00.000Z",
+    pdgaNumber: null,
+    ratingAtEntry: null,
+    pdgaMembership: false,
+  });
+  insertHolder({
+    seasonYear: SEASON_YEAR,
+    name: "Josh Goheen",
+    tagNumber: null,
+    pool: "A",
+    entryDate: "2026-01-15T00:00:00.000Z",
+    pdgaNumber: null,
+    ratingAtEntry: null,
+    pdgaMembership: false,
+  });
+
+  // Likewise, force a SECOND real fixture entrant ("Jonathan Svendsen")
+  // permanently ambiguous — untouched by any mutation in this file — so
+  // `countPending`/`pendingReview` still has something to count after the
+  // Goheen/Diefes flows below resolve their own entrants.
+  insertHolder({
+    seasonYear: SEASON_YEAR,
+    name: "Jonathan Svendsen",
+    tagNumber: null,
+    pool: "A",
+    entryDate: "2026-01-15T00:00:00.000Z",
+    pdgaNumber: null,
+    ratingAtEntry: null,
+    pdgaMembership: false,
+  });
+  insertHolder({
+    seasonYear: SEASON_YEAR,
+    name: "Jonathan Svendsen",
+    tagNumber: null,
+    pool: "A",
+    entryDate: "2026-01-15T00:00:00.000Z",
+    pdgaNumber: null,
+    ratingAtEntry: null,
+    pdgaMembership: false,
   });
 });
 

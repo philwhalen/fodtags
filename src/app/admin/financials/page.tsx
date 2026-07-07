@@ -1,3 +1,4 @@
+import { formatTagNumber } from "@/lib";
 import { formatCents } from "@/lib/money";
 import { SEASON_YEAR } from "@server/admin/context";
 import { listAdjustments } from "@server/db/repositories/financialAdjustments";
@@ -37,7 +38,10 @@ export default async function AdminFinancialsPage() {
   const expenses = sortByDateDesc(listExpenses(SEASON_YEAR), "spentDate");
   const adjustments = sortByDateDesc(listAdjustments(SEASON_YEAR), "adjustedDate");
   const holders = listHolders(SEASON_YEAR);
-  const holderNames = new Map(holders.map((h) => [h.id, `#${h.tagNumber} ${h.name}`]));
+  const holderNames = new Map(
+    holders.map((h) => [h.id, `#${formatTagNumber(h.tagNumber)} ${h.name}`]),
+  );
+  const holdersForForms = holders;
 
   const { funds, totalCashCents } = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).financials;
 
@@ -155,7 +159,7 @@ export default async function AdminFinancialsPage() {
           </div>
         )}
         <h3 className="admin-subsection-heading">Record payout</h3>
-        <AddPayoutForm holders={holders} />
+        <AddPayoutForm holders={holdersForForms} />
       </section>
 
       <section className="admin-section">

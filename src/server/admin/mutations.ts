@@ -46,6 +46,7 @@ import {
 } from "@server/db/repositories/eventSources";
 import { insertSwitch } from "@server/db/repositories/poolSwitches";
 import {
+  findActiveProvisionalHolderByPdgaNumber,
   findHolderByTagNumber,
   getHolder,
   insertHolder,
@@ -415,7 +416,127 @@ export async function setTagNotPresent(
   return { publishedVersion };
 }
 
-// --- Player matching review queue (Spec 10 §10.4) ---
+// --- Provisional holder confirm / merge / exclude (Spec 03 §3.5/§3.6,
+// Spec 10 §10.4 "section A") ---
+
+export interface ConfirmHolderInput {
+  id: number;
+  pool: Pool;
+  tagNumber?: number | null;
+  name?: string;
+  entryDate?: string;
+  ratingAtEntry?: number | null;
+  pdgaMembership?: boolean;
+}
+
+/**
+ * A director confirms an auto-added provisional holder: assigns a pool
+ * (required) and, optionally, a tag number and/or corrections to the
+ * scrape-seeded fields. A tagless confirmed holder is valid — it keeps
+ * scoring, it just no longer shows the "pending confirmation" badge.
+ *
+ * Re-confirming an already-confirmed holder is rejected outright (rather
+ * than silently no-op'ing) — this action is specifically "leave the
+ * provisional state," and a holder that's already left it has no provisional
+ * state left to leave; callers (the section-A confirm form) only ever see
+ * this holder while it's still in `listProvisionalHolders`, so in practice
+ * this only fires on a stale/double-submitted form.
+ */
+export async function confirmHolder(
+  input: ConfirmHolderInput,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  const before = getHolder(input.id);
+  if (!before) {
+    throw new AdminError("Holder not found.", "not_found");
+  }
+  if (before.confirmed) {
+    throw new AdminError("Holder is already confirmed.");
+  }
+
+  if (input.tagNumber != null) {
+    assertUniqueTag(SEASON_YEAR, input.tagNumber, input.id);
+  }
+
+  const { id, ...patch } = input;
+  updateHolder(id, { ...patch, confirmed: true });
+  const after = getHolder(id);
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "confirm",
+    entityType: "tag_holder",
+    entityId: String(id),
+    before,
+    after,
+  });
+
+  return {
+    publishedVersion,
+    warning: poolBHighRatingWarning(input.pool, input.ratingAtEntry ?? before.ratingAtEntry),
+  };
+}
+
+/**
+ * A director merges a provisional (duplicate) holder into an existing
+ * holder — the common case being the same player already on the roster
+ * under a slightly different name than the scrape reported. Re-points this
+ * season's results by the provisional's PDGA # (the sticky key), records a
+ * sticky admin link on that PDGA # so a future refresh never re-splits it,
+ * and retires (deactivates, never hard-deletes) the provisional record —
+ * it drops out of the `players` index because that index filters `active`
+ * (see `build.ts`'s `activeHolders`).
+ */
+export async function mergeProvisionalIntoHolder(
+  provisionalId: number,
+  targetHolderId: number,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  if (provisionalId === targetHolderId) {
+    throw new AdminError("Cannot merge a holder into itself.");
+  }
+
+  const provisional = getHolder(provisionalId);
+  if (!provisional) {
+    throw new AdminError("Provisional holder not found.", "not_found");
+  }
+  const target = getHolder(targetHolderId);
+  if (!target) {
+    throw new AdminError("Target holder not found.", "not_found");
+  }
+  if (provisional.pdgaNumber == null) {
+    throw new AdminError("Provisional holder has no PDGA number to re-point.");
+  }
+
+  setHolderIdByPdgaNumber(SEASON_YEAR, provisional.pdgaNumber, targetHolderId);
+  upsertMatch({
+    seasonYear: SEASON_YEAR,
+    pdgaNumber: provisional.pdgaNumber,
+    holderId: targetHolderId,
+    source: "admin",
+    decidedBy: actorEmail,
+  });
+  updateHolder(provisionalId, { active: false });
+
+  const match = getMatch(SEASON_YEAR, provisional.pdgaNumber);
+  const after = { target: getHolder(targetHolderId), match };
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "merge",
+    entityType: "tag_holder",
+    entityId: String(provisionalId),
+    before: provisional,
+    after,
+  });
+  return { publishedVersion };
+}
+
+// --- Player matching review queue (Spec 10 §10.4 "section B") ---
 
 export async function linkEntrant(
   pdgaNumber: number,
@@ -508,6 +629,17 @@ export async function markNonHolder(
     decidedBy: actorEmail,
   });
   setHolderIdByPdgaNumber(SEASON_YEAR, pdgaNumber, null);
+
+  // Sub-plan 04: excluding an auto-added provisional holder's entrant
+  // should retire the provisional record too, so it stops appearing as a
+  // roster/scoring holder. `findActiveProvisionalHolderByPdgaNumber` only
+  // ever matches `confirmed = false` rows — a director-confirmed holder on
+  // this PDGA # (e.g. one linked via `linkEntrant`) is never touched here.
+  const provisional = findActiveProvisionalHolderByPdgaNumber(SEASON_YEAR, pdgaNumber);
+  if (provisional) {
+    updateHolder(provisional.id, { active: false });
+  }
+
   const after = getMatch(SEASON_YEAR, pdgaNumber);
 
   const publishedVersion = await commitAndPublish({

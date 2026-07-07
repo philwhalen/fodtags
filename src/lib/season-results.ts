@@ -17,7 +17,7 @@ import type {
 export interface SeasonStandingRow {
   rank: number;
   holderId: number;
-  tagNumber: number;
+  tagNumber: number | null;
   pool: Pool;
   totalPoints: number;
   /** True when this row's rank was resolved by the low-tag-number
@@ -86,7 +86,7 @@ export interface OlpRow {
   /** Rank within the sub-league's combined (both-pools) OLP field. */
   rank: number;
   holderId: number;
-  tagNumber: number;
+  tagNumber: number | null;
   /** Full-precision OLP score (lower is better). */
   score: number;
   /** `0.10 × ratingAsOfSubLeagueEndDate`, full precision. */
@@ -126,7 +126,7 @@ export interface SkinsRow {
   /** Standing rank within the pool (Championship total-points order). */
   rank: number;
   holderId: number;
-  tagNumber: number;
+  tagNumber: number | null;
   totalPoints: number;
   /** Always true for Pool A; for Pool B requires rating ≤920 as of the
    * end of the season (Spec 02 §2.9). Holders with no known rating are

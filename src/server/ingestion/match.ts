@@ -14,11 +14,14 @@ export interface MatchedEntrant {
 /**
  * A normalized entrant that could not be confidently resolved — lands in
  * the admin review queue (Spec 03 §3.5) rather than being silently guessed
- * or silently dropped.
+ * or silently dropped. Narrowed to the two cases the pipeline still can't
+ * decide by itself: two-or-more name hits (`ambiguous`) or no PDGA# to key
+ * off of at all (`no-pdga-number-match`). A PDGA#-having entrant with zero
+ * name hits is no longer `unmatched` — see `AutoAddCandidate` below.
  */
 export interface UnmatchedEntrant {
   entrant: NormalizedEntrantResult;
-  reason: "no-pdga-number-match" | "no-name-match" | "ambiguous";
+  reason: "no-pdga-number-match" | "ambiguous";
 }
 
 export interface AutoLink {
@@ -26,10 +29,22 @@ export interface AutoLink {
   holderId: number;
 }
 
+/**
+ * A brand-new entrant — has a PDGA#, matches zero holders by number and by
+ * name — classified but NOT created here (Spec 03 §3.5/§3.6). `match()`
+ * stays pure; the impure ingestion pipeline (`pipeline.ts`) turns each
+ * candidate into a provisional tag holder.
+ */
+export interface AutoAddCandidate {
+  entrant: NormalizedEntrantResult;
+  pdgaNumber: number;
+}
+
 export interface MatchResult {
   matched: MatchedEntrant[];
   unmatched: UnmatchedEntrant[];
   autoLinks: AutoLink[];
+  autoAdds: AutoAddCandidate[];
 }
 
 /** Minimal shape of a tag holder needed for matching. */
@@ -51,7 +66,9 @@ export interface StickyMatch {
  * 1. Sticky first — linked holder or confirmed non-holder; never re-queue.
  * 2. Exact PDGA# — link even if names differ; emit autoLink.
  * 3. Unique normalized name (no PDGA# hit) — link; emit autoLink.
- * 4. Else — unmatched (zero name matches) or ambiguous (two or more).
+ * 4. Else — ambiguous (two or more name hits, unmatched), auto-add
+ *    candidate (has a PDGA#, zero name hits — Spec 03 §3.5), or unmatched
+ *    (no PDGA# at all, e.g. a guest).
  */
 export function match(
   entrants: NormalizedEntrantResult[],
@@ -61,6 +78,7 @@ export function match(
   const matched: MatchedEntrant[] = [];
   const unmatched: UnmatchedEntrant[] = [];
   const autoLinks: AutoLink[] = [];
+  const autoAdds: AutoAddCandidate[] = [];
 
   for (const entrant of entrants) {
     const sticky = entrant.pdgaNumber !== null ? stickyMap.get(entrant.pdgaNumber) : undefined;
@@ -103,11 +121,11 @@ export function match(
     }
 
     if (entrant.pdgaNumber !== null) {
-      unmatched.push({ entrant, reason: "no-name-match" });
+      autoAdds.push({ entrant, pdgaNumber: entrant.pdgaNumber });
     } else {
       unmatched.push({ entrant, reason: "no-pdga-number-match" });
     }
   }
 
-  return { matched, unmatched, autoLinks };
+  return { matched, unmatched, autoLinks, autoAdds };
 }

@@ -1339,6 +1339,15 @@
   border-radius: 0.25rem;
 }
 
+/* Roster-index placement of the same "Pending confirmation" text badge
+ * (Spec 08 §8.3) — inline next to the player name rather than in a
+ * profile-flags list. */
+.roster-pending-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
 .profile-subleague-selector {
   display: flex;
   flex-wrap: wrap;

@@ -55,28 +55,45 @@ The sub-league structure (3 separate PDGA events) is a launch decision ([Master 
 
 **Pool ≠ PDGA division.** Pool (A / B) is a league overlay stored on the roster, not a PDGA division. The scraper reads whatever PDGA division(s) the event uses; pool assignment is applied from admin data during player matching.
 
-## 3.5 Player matching ("Admin maps, app assists")
+## 3.5 Player matching & auto-add ("App bootstraps, admin confirms")
 
-Only tag holders score, so every PDGA entrant must be resolved to a tag holder or explicitly ignored.
+Only tag holders score, so every PDGA entrant must resolve to a tag holder or be explicitly excluded. The app **bootstraps** a holder record for each genuinely new entrant, so a new player who shows up on League Night is scored on the very next refresh — the director only **confirms** details rather than hand-typing the record.
 
-1. **Auto-match, in priority order:**
+1. **Auto-match (existing holders), in priority order:**
    - **Exact PDGA number** → the holder carrying that PDGA number. The PDGA number is the source of truth: a number hit auto-links **even if the display name differs** (players change how their name renders on PDGA).
    - **Unique normalized name** (only when there is no PDGA-number hit): if the entrant's normalized name matches **exactly one** holder, auto-link.
-2. **Confidence policy.** The two cases above are the *only* auto-links. Everything else is routed to the **admin review queue** — specifically a normalized name matching **zero** holders (unmatched) or **two or more** holders (ambiguous). The app never silently guesses a holder.
-3. The review queue lives in the admin console (see [Spec 10 §10.4](./10-Admin-Console.md#104-player-matching-review-queue)); each pending entrant is resolved by **link / create / mark-as-non-holder**.
-4. **Sticky decisions.** Every resolution — an auto-link, or an admin **link / create / mark-as-non-holder** — is recorded keyed by **PDGA number** and persists across refreshes: resolved entrants are never re-queued and auto-links are not re-evaluated each run.
-5. Non-tag-holders remain in the data as a **minimal record** (PDGA number + name) — needed for raw finish order / round context — but are **excluded from points**.
 
-**Name normalization** (for the unique-name auto-match and the queue's suggestions): lowercased, trimmed, internal whitespace collapsed, punctuation and diacritics stripped. Nickname/alias resolution beyond this is out of scope — those simply fall to the review queue and, once linked, stick.
+2. **Auto-add (new holders).** An entrant that (a) has a PDGA number, (b) matches **zero** holders by PDGA number, and (c) matches **zero** holders by normalized name is treated as a **new player** and **auto-added as a provisional tag holder** on that refresh, seeded from the scrape:
+   - **PDGA number** and **display name** — taken directly from the scrape.
+   - **Entry date** — the date of the entrant's **first ingested league round** ([Spec 02 §2.3](./02-Domain-Model-and-Scoring.md#23-entry--eligibility-timing)). Because "no finish before entry date scores," a provisional holder scores from their first observed round; a director corrects the date on confirmation if the real tag purchase was later.
+   - **Rating at entry** — the player's current PDGA rating from the scrape (or **null** if unrated). This is a **provisional seed**; the monthly official pull (§3.1) supersedes it for eligibility gating.
+   - **PDGA membership** — seeded **true** (the entrant appears in PDGA data).
+   - **Pool** — defaulted to **A** regardless of rating ([Spec 02 §2.2](./02-Domain-Model-and-Scoring.md#22-pools--eligibility)); the director assigns Pool B on confirmation if appropriate.
+   - **Tag number** — left **unassigned (null)**; the director sets it on confirmation / when the physical tag is bought ([Spec 02 §2.6](./02-Domain-Model-and-Scoring.md#26-tie-breakers)).
+   - **`confirmed = false`** — the record is **provisional/pending**.
 
-**Requirement:** the public UI must never attribute points to a wrongly matched or unmatched player; unresolved matches surface as a data-quality banner rather than a bad number.
+   A provisional holder **scores immediately** and appears on the public site carrying a **"pending confirmation"** marker, until a director reviews it ([Spec 10 §10.4](./10-Admin-Console.md#104-player-review--confirmation-queue)). The auto-add is a **system** decision (sticky, keyed by PDGA number) and is audited; provisional holders feed the refresh run's **new-players** count and the public data-quality banner.
+
+3. **Still routed to review (never auto-added):**
+   - **Ambiguous** — a PDGA number with no PDGA-number hit but a normalized name matching **two or more** holders. This is almost always an existing holder (name changed, PDGA # not yet on file), so the app does **not** create a duplicate; the director **links** it.
+   - **No PDGA number** — an entrant with no PDGA number has no stable identity key, so it is **not** auto-added; the director **links** or **excludes** it.
+
+   The app never silently *guesses which existing holder* an entrant is — auto-add only ever creates a **brand-new** record, never a link to an ambiguous existing one.
+
+4. **Sticky decisions.** Every resolution — an auto-link, an **auto-add**, or an admin **confirm / link / exclude ("non-holder")** — is recorded keyed by **PDGA number** and persists across refreshes: resolved entrants are never re-queued, and auto-links/auto-adds are not re-evaluated each run. A later refresh with new rounds for a provisional holder simply appends results to the existing record.
+
+5. **Excluded (non-holder) entrants** remain in the data as a **minimal record** (PDGA number + name) — needed for raw finish order / round context — but are **excluded from points**. Excluding a previously auto-added holder removes its provisional record from scoring ([Spec 10 §10.4](./10-Admin-Console.md#104-player-review--confirmation-queue)).
+
+**Name normalization** (for the unique-name auto-match, the auto-add zero-match test, and the queue's suggestions): lowercased, trimmed, internal whitespace collapsed, punctuation and diacritics stripped. Nickname/alias resolution beyond this is out of scope — those simply fall to the review queue and, once linked, stick.
+
+**Requirement:** the public UI must never attribute points to a *wrongly matched* player. A provisional auto-added holder is a **new** player (not a mismatch) and is clearly marked pending until confirmed; ambiguous and PDGA-less entrants surface as a data-quality banner rather than a bad number.
 
 ## 3.6 Refresh cadence
 
 - **Scheduled refresh: every Thursday at 9:00 PM ET** (after League Night play), pulling all active event sources.
 - **Admin "Refresh now"** button for on-demand pulls (corrections, mid-week rating updates, tournaments/FOD Open).
 - **No near-live in-round updates** at launch.
-- Each refresh is a **run**: records start/end time, per-source success/failure, counts, and any new unmatched players. Runs are visible in the admin console.
+- Each refresh is a **run**: records start/end time, per-source success/failure, counts, any **newly auto-added (provisional) players**, and any entrants still needing review (ambiguous / no PDGA #). Runs are visible in the admin console.
 - Timestamps everywhere are stored in UTC and displayed in **ET** (league-local).
 
 ## 3.7 Ingestion pipeline
@@ -102,7 +119,7 @@ Fetch (per source) → Normalize → Match players → Persist snapshot
 - A scheduled Thursday 9 PM ET run pulls all active sources, matches players, recomputes, and publishes atomically.
 - "Refresh now" produces an identical result to the scheduled path.
 - A single source failing leaves other sources' data intact and flags the failure.
-- A newly appearing PDGA entrant with no confident match lands in the admin review queue and is excluded from points until resolved.
+- A newly appearing PDGA entrant **with a PDGA number** is auto-added as a provisional holder, scores from its first ingested round, and is flagged **pending confirmation** until a director reviews it. An **ambiguous** (2+ name matches) or **PDGA-less** entrant instead lands in the review queue and is excluded from points until resolved.
 - Every public number is traceable to `(eventSource, round, refreshRun)`.
 
 ← Prev: [02 — Domain Model](./02-Domain-Model-and-Scoring.md) · Next: [04 — Leaderboards](./04-Feature-Leaderboards.md)

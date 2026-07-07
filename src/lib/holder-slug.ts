@@ -3,10 +3,16 @@ import { slugifyName } from "./slugify-name";
 export interface SlugHolderInput {
   id: number;
   name: string;
-  tagNumber: number;
+  /** Null for a provisional (auto-added, not-yet-confirmed) holder — Spec
+   * 03 §3.5/§3.6 — in which case a base-slug collision falls back to the
+   * holder ID instead of the tag number (Spec 08 §8.2). */
+  tagNumber: number | null;
 }
 
-/** Map holderId → canonical slug (Spec 08 §8.2). */
+/** Map holderId → canonical slug (Spec 08 §8.2). On a base-slug collision,
+ * appends the tag number to disambiguate — or the holder ID, for a
+ * tagless (provisional) holder, so the fallback is still unique and
+ * stable. */
 export function buildCanonicalSlugs(holders: SlugHolderInput[]): Map<number, string> {
   const baseById = new Map<number, string>();
   const groups = new Map<string, SlugHolderInput[]>();
@@ -25,7 +31,7 @@ export function buildCanonicalSlugs(holders: SlugHolderInput[]): Map<number, str
     const group = groups.get(base)!;
     slugById.set(
       holder.id,
-      group.length > 1 ? `${base}-${holder.tagNumber}` : base,
+      group.length > 1 ? `${base}-${holder.tagNumber ?? holder.id}` : base,
     );
   }
   return slugById;

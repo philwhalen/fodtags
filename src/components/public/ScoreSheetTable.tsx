@@ -2,7 +2,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 
-import { capLabel } from "@/lib";
+import { capLabel, formatTagNumber } from "@/lib";
 import type { DisplayLine, ScoreSheetHolderView, ScoreSheetProjection } from "@/lib";
 
 /** Renders one line item's title/finish/points/tie-break/reason as plain
@@ -151,7 +151,7 @@ export function ScoreSheetTable({
                     <td data-label="Player" id={holder.slug}>
                       {playerCell(holderView)}
                     </td>
-                    <td data-label="Tag #">{holder.tagNumber}</td>
+                    <td data-label="Tag #">{formatTagNumber(holder.tagNumber)}</td>
                     <td data-label="League Night">{holder.byType.LeagueNight}</td>
                     <td data-label="Podium">{holder.byType.Podium}</td>
                     <td data-label="Tournament">{holder.byType.Tournament}</td>

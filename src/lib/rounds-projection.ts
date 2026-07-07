@@ -1,4 +1,5 @@
 import { filterRowsByName } from "./filter-rows";
+import { tagSortKey } from "./tag-number";
 import type { SubLeagueSlug } from "./public-routes";
 import type { EventType, SubLeagueType } from "./season-snapshot";
 import type {
@@ -147,7 +148,7 @@ export function summarizeRoster(
       if (byRating !== 0) {
         return byRating;
       }
-      return a.tagNumber - b.tagNumber;
+      return tagSortKey(a.tagNumber) - tagSortKey(b.tagNumber) || a.holderId - b.holderId;
     });
 }
 

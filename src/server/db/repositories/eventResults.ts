@@ -2,10 +2,10 @@
 // specs/12-Architecture.md §12.1 / §12.4.
 import "server-only";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 
 import { db } from "@server/db/client";
-import { eventResults } from "@server/db/schema";
+import { eventResults, events } from "@server/db/schema";
 
 /**
  * Thin, typed data access — NO business logic (that's the pure engine,
@@ -74,6 +74,40 @@ export function listResultsByEvent(eventId: number) {
 
 export function listResultsBySeason(seasonYear: number) {
   return db.select().from(eventResults).where(eq(eventResults.seasonYear, seasonYear)).all();
+}
+
+/** Round count so far for a holder (Spec 10 §10.4 section-A summary —
+ * "round count so far" on the provisional-holder confirmation screen). */
+export function countResultsForHolder(seasonYear: number, holderId: number): number {
+  return db
+    .select()
+    .from(eventResults)
+    .where(and(eq(eventResults.seasonYear, seasonYear), eq(eventResults.holderId, holderId)))
+    .all().length;
+}
+
+/**
+ * The holder's earliest attributed round this season (by event date) with the
+ * reported rating from that round, or `undefined` if they have no attributed
+ * results. The refresh uses this to back-date an auto-added holder's entry
+ * date to their true FIRST ingested round when they appear across multiple
+ * sub-leagues in one run (Spec 03 §3.5 — "entry date = first ingested
+ * round"). */
+export function earliestAttributedRound(
+  seasonYear: number,
+  holderId: number,
+): { eventDate: string; playerRatingReported: number | null } | undefined {
+  return db
+    .select({
+      eventDate: events.eventDate,
+      playerRatingReported: eventResults.playerRatingReported,
+    })
+    .from(eventResults)
+    .innerJoin(events, eq(events.id, eventResults.eventId))
+    .where(and(eq(eventResults.seasonYear, seasonYear), eq(eventResults.holderId, holderId)))
+    .orderBy(asc(events.eventDate))
+    .limit(1)
+    .get();
 }
 
 export interface UpsertResultInput {

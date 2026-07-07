@@ -24,7 +24,9 @@ let getPublished: (
   seasonYear: number,
   viewKey: string,
 ) => { payload: unknown } | undefined;
-let listHolders: (seasonYear: number) => { id: number; name: string; tagNumber: number; active: boolean }[];
+let listHolders: (
+  seasonYear: number,
+) => { id: number; name: string; tagNumber: number | null; active: boolean }[];
 let listEvents: (seasonYear: number) => { id: number; label: string; canceled: boolean }[];
 let insertRating: (input: {
   seasonYear: number;

@@ -68,7 +68,7 @@ describe("match", () => {
     expect(result.autoLinks).toHaveLength(0);
   });
 
-  it("queues unmatched when zero name matches and no PDGA# hit", () => {
+  it("classifies a PDGA#-having entrant with zero name hits as an auto-add candidate", () => {
     const result = match(
       [entrant({ pdgaNumber: 999999, displayName: "Nobody Here" })],
       holders,
@@ -76,8 +76,12 @@ describe("match", () => {
     );
 
     expect(result.matched).toHaveLength(0);
-    expect(result.unmatched).toHaveLength(1);
-    expect(result.unmatched[0]?.reason).toBe("no-name-match");
+    expect(result.unmatched).toHaveLength(0);
+    expect(result.autoAdds).toHaveLength(1);
+    expect(result.autoAdds[0]).toEqual({
+      entrant: expect.objectContaining({ pdgaNumber: 999999, displayName: "Nobody Here" }),
+      pdgaNumber: 999999,
+    });
   });
 
   it("queues guests without PDGA number as no-pdga-number-match", () => {
