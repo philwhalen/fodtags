@@ -1,6 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 
+import { formatTagNumber } from "@/lib";
 import type { PlayersIndexRow } from "@/lib";
 
 export function PlayersRosterTable({
@@ -34,8 +35,13 @@ export function PlayersRosterTable({
                 >
                   {row.name}
                 </Link>
+                {row.provisional ? (
+                  <span className="profile-flag roster-pending-badge" role="status">
+                    Pending confirmation
+                  </span>
+                ) : null}
               </td>
-              <td data-label="Tag #">{row.tagNumber}</td>
+              <td data-label="Tag #">{formatTagNumber(row.tagNumber)}</td>
               <td data-label="Pool">{row.pool}</td>
               <td data-label="Present rating">
                 {row.presentRating ?? "— (Unrated)"}

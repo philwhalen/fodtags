@@ -441,6 +441,64 @@ describe("computeSeason — computed Podium and tie-breaks", () => {
     expect(items1[0]!.points).toBe(60);
     expect(items1[0]!.tieBrokenByTag).toBe(true);
   });
+
+  it("ranks a numbered holder ahead of a tied provisional (tagless) holder", () => {
+    const holders = [
+      holder({ id: 1, tagNumber: null }),
+      holder({ id: 2, tagNumber: 2 }),
+    ];
+    const snapshot = baseSnapshot({
+      holders,
+      events: [
+        leagueNight({
+          id: 1,
+          results: [
+            { holderId: 1, rawScoreToPar: -5, roundRating: null, tagPresent: true },
+            { holderId: 2, rawScoreToPar: -5, roundRating: null, tagPresent: true },
+          ],
+        }),
+      ],
+    });
+
+    const result = computeSeason(snapshot);
+    const items1 = result.scoreSheet[1]!.countedLineItems;
+    const items2 = result.scoreSheet[2]!.countedLineItems;
+
+    // Numbered holder 2 wins the tie over tagless (provisional) holder 1.
+    expect(items2[0]!.rank).toBe(1);
+    expect(items2[0]!.points).toBe(100);
+    expect(items1[0]!.rank).toBe(2);
+    expect(items1[0]!.points).toBe(60);
+  });
+
+  it("breaks a tie between two tagless (provisional) holders by holder ID", () => {
+    const holders = [
+      holder({ id: 2, tagNumber: null }),
+      holder({ id: 1, tagNumber: null }),
+    ];
+    const snapshot = baseSnapshot({
+      holders,
+      events: [
+        leagueNight({
+          id: 1,
+          results: [
+            { holderId: 2, rawScoreToPar: -5, roundRating: null, tagPresent: true },
+            { holderId: 1, rawScoreToPar: -5, roundRating: null, tagPresent: true },
+          ],
+        }),
+      ],
+    });
+
+    const result = computeSeason(snapshot);
+    const items1 = result.scoreSheet[1]!.countedLineItems;
+    const items2 = result.scoreSheet[2]!.countedLineItems;
+
+    // Lower holder ID (1) wins the tie over holder 2 — both tagless.
+    expect(items1[0]!.rank).toBe(1);
+    expect(items1[0]!.points).toBe(100);
+    expect(items2[0]!.rank).toBe(2);
+    expect(items2[0]!.points).toBe(60);
+  });
 });
 
 describe("computeSeason — score sheet totals", () => {

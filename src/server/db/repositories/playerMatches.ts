@@ -7,7 +7,7 @@ import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { normalizeName } from "@/lib/normalize-name";
 import { db } from "@server/db/client";
 import { eventResults, playerMatches } from "@server/db/schema";
-import { listHolders } from "@server/db/repositories/tagHolders";
+import { listHolders, listProvisionalHolders } from "@server/db/repositories/tagHolders";
 
 /**
  * Thin, typed data access — NO business logic (that's the pure engine,
@@ -84,7 +84,9 @@ export function getStickyMatches(seasonYear: number): Map<number, { holderId: nu
 export interface SuggestedHolder {
   id: number;
   name: string;
-  tagNumber: number;
+  /** Null for a provisional (auto-added, not-yet-confirmed) holder — Spec
+   * 03 §3.5/§3.6 — rendered as "—" (`formatTagNumber`). */
+  tagNumber: number | null;
 }
 
 export interface PendingQueueEntry {
@@ -147,6 +149,13 @@ export function listPendingForQueue(seasonYear: number): PendingQueueEntry[] {
   return pending;
 }
 
+/**
+ * Two queue lists, summed (sub-plan 04 / Plan decision #4): provisional
+ * (auto-added, unconfirmed) holders awaiting a director's confirm/merge/
+ * exclude decision, plus ambiguous/PDGA-less link-decisions still open in
+ * `listPendingForQueue`. Feeds `pendingReview` on every published standings
+ * payload (`build.ts`) — the public banner updates from this automatically.
+ */
 export function countPending(seasonYear: number): number {
-  return listPendingForQueue(seasonYear).length;
+  return listProvisionalHolders(seasonYear).length + listPendingForQueue(seasonYear).length;
 }

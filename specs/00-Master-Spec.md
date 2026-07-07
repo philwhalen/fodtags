@@ -62,7 +62,7 @@ These constrain every sub-spec. Change them here first.
 | **Data ingestion** | Scheduled refresh **Thursdays 9:00 PM ET** + an admin **"Refresh now"** button. No near-live in-round updates. |
 | **Ratings usage** | **Eligibility thresholds (900/920) use official monthly ratings.** Live per-round ratings are shown but labeled **unofficial**. |
 | **Admin-managed data** | Tag roster & tag numbers; **per-night entry counts**; financial inputs/pots; opening balances & payouts; manual adjustments/overrides; PDGA event registration & player↔holder matching. |
-| **Player matching** | Roster stores each holder's PDGA #. App auto-matches PDGA entrants to holders and **flags unmatched entries** for admin review. |
+| **Player matching** | Roster stores each holder's PDGA #. App auto-matches PDGA entrants to holders; a **new entrant with a PDGA # is auto-added as a provisional holder** (scores immediately, flagged pending until a director confirms pool + tag number), while **ambiguous or PDGA-less entrants are flagged** for admin review. |
 | **Financial transparency** | **Full**: tag sales, entry splits, skins purses, OLP pot, ace pot, expense reserves, and payouts are all public — as **summary balances + a full chronological ledger**. |
 | **Access & auth** | Public read-only site + admin area gated by **Google sign-in against a director email allowlist**. |
 | **Privacy** | Public shows **full names and PDGA numbers**, with rows linking out to PDGA profiles (data already public). |

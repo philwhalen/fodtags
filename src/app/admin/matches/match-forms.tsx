@@ -3,16 +3,20 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { formatTagNumber } from "@/lib";
+
 import {
+  confirmHolderAction,
   createHolderForEntrantAction,
   linkEntrantAction,
   markNonHolderAction,
+  mergeProvisionalIntoHolderAction,
 } from "../actions";
 
 type SuggestedHolder = {
   id: number;
   name: string;
-  tagNumber: number;
+  tagNumber: number | null;
 };
 
 type PendingEntry = {
@@ -25,8 +29,17 @@ type PendingEntry = {
 type Holder = {
   id: number;
   name: string;
-  tagNumber: number;
+  tagNumber: number | null;
   pool: "A" | "B";
+};
+
+type ProvisionalHolder = {
+  id: number;
+  name: string;
+  pdgaNumber: number | null;
+  entryDate: string;
+  ratingAtEntry: number | null;
+  pdgaMembership: boolean;
 };
 
 function Feedback({ message, warning }: { message: string | null; warning?: string }) {
@@ -92,7 +105,9 @@ export function PendingEntrantRow({
   const suggestionText =
     entry.suggestedHolders.length === 0
       ? "—"
-      : entry.suggestedHolders.map((h) => `#${h.tagNumber} ${h.name}`).join(", ");
+      : entry.suggestedHolders
+          .map((h) => `#${formatTagNumber(h.tagNumber)} ${h.name}`)
+          .join(", ");
 
   return (
     <tr>
@@ -117,7 +132,7 @@ export function PendingEntrantRow({
                 </option>
                 {holders.map((h) => (
                   <option key={h.id} value={h.id}>
-                    #{h.tagNumber} {h.name} (Pool {h.pool})
+                    #{formatTagNumber(h.tagNumber)} {h.name} (Pool {h.pool})
                   </option>
                 ))}
               </select>
@@ -174,6 +189,181 @@ export function PendingEntrantRow({
               Create &amp; link
             </button>
             <Feedback message={createMessage} warning={createWarning} />
+          </form>
+        ) : null}
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * A single auto-added provisional holder awaiting a director's confirm /
+ * merge / exclude decision (Spec 10 §10.4 section A). Shows the
+ * scrape-seeded summary (name, PDGA #, entry date, seeded rating, PDGA
+ * membership, round count so far) plus the three resolution actions.
+ */
+export function ProvisionalHolderRow({
+  holder,
+  roundCount,
+  targetHolders,
+}: {
+  holder: ProvisionalHolder;
+  roundCount: number;
+  /** Active, confirmed holders eligible as a merge target. */
+  targetHolders: Holder[];
+}) {
+  const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
+  const [confirmWarning, setConfirmWarning] = useState<string | undefined>();
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeMessage, setMergeMessage] = useState<string | null>(null);
+  const [excludeMessage, setExcludeMessage] = useState<string | null>(null);
+
+  async function handleConfirm(formData: FormData) {
+    setConfirmMessage(null);
+    setConfirmWarning(undefined);
+    try {
+      const result = await confirmHolderAction(formData);
+      setConfirmMessage(`Confirmed — published version ${result.publishedVersion}`);
+      setConfirmWarning(result.warning);
+      setConfirmOpen(false);
+      router.refresh();
+    } catch (err) {
+      setConfirmMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleMerge(formData: FormData) {
+    setMergeMessage(null);
+    try {
+      const result = await mergeProvisionalIntoHolderAction(formData);
+      setMergeMessage(`Merged — published version ${result.publishedVersion}`);
+      setMergeOpen(false);
+      router.refresh();
+    } catch (err) {
+      setMergeMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleExclude(formData: FormData) {
+    setExcludeMessage(null);
+    try {
+      const result = await markNonHolderAction(formData);
+      setExcludeMessage(`Marked non-holder — version ${result.publishedVersion}`);
+      router.refresh();
+    } catch (err) {
+      setExcludeMessage(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <tr>
+      <td>{holder.name}</td>
+      <td className="admin-num">{holder.pdgaNumber ?? "—"}</td>
+      <td>{holder.entryDate}</td>
+      <td className="admin-num">{holder.ratingAtEntry ?? "—"}</td>
+      <td>
+        <span className="admin-status" data-status={holder.pdgaMembership ? "yes" : "no"}>
+          {holder.pdgaMembership ? "yes" : "no"}
+        </span>
+      </td>
+      <td className="admin-num">{roundCount}</td>
+      <td>
+        <div className="admin-actions">
+          <button
+            type="button"
+            className="admin-button admin-button--primary"
+            onClick={() => {
+              setConfirmOpen((v) => !v);
+              setMergeOpen(false);
+            }}
+          >
+            {confirmOpen ? "Cancel confirm" : "Confirm"}
+          </button>
+          <button
+            type="button"
+            className="admin-button"
+            onClick={() => {
+              setMergeOpen((v) => !v);
+              setConfirmOpen(false);
+            }}
+          >
+            {mergeOpen ? "Cancel merge" : "Merge into existing holder"}
+          </button>
+          <form action={handleExclude} className="admin-form--inline">
+            <input type="hidden" name="pdgaNumber" value={holder.pdgaNumber ?? ""} />
+            <button type="submit" className="admin-button admin-button--danger">
+              Exclude (non-holder)
+            </button>
+          </form>
+        </div>
+        <Feedback message={confirmMessage} warning={confirmWarning} />
+        <Feedback message={mergeMessage} />
+        <Feedback message={excludeMessage} />
+        {confirmOpen ? (
+          <form action={handleConfirm} className="admin-form">
+            <input type="hidden" name="id" value={holder.id} />
+            <label className="admin-field">
+              Pool{" "}
+              <select name="pool" defaultValue="A" className="admin-select">
+                <option value="A">A</option>
+                <option value="B">B</option>
+              </select>
+            </label>
+            <label className="admin-field">
+              Tag # (optional)
+              <input name="tagNumber" type="number" min={1} className="admin-input" />
+            </label>
+            <label className="admin-field">
+              Name <input name="name" defaultValue={holder.name} required className="admin-input" />
+            </label>
+            <label className="admin-field">
+              Entry date{" "}
+              <input name="entryDate" defaultValue={holder.entryDate} required className="admin-input" />
+            </label>
+            <label className="admin-field">
+              Rating at entry{" "}
+              <input
+                name="ratingAtEntry"
+                type="number"
+                defaultValue={holder.ratingAtEntry ?? ""}
+                className="admin-input"
+              />
+            </label>
+            <label className="admin-field admin-field--check">
+              <input
+                name="pdgaMembership"
+                type="checkbox"
+                defaultChecked={holder.pdgaMembership}
+                className="admin-checkbox"
+              />{" "}
+              PDGA member
+            </label>
+            <button type="submit" className="admin-button admin-button--primary">
+              Confirm
+            </button>
+          </form>
+        ) : null}
+        {mergeOpen ? (
+          <form action={handleMerge} className="admin-form">
+            <input type="hidden" name="provisionalId" value={holder.id} />
+            <label className="admin-field">
+              Merge into{" "}
+              <select name="targetHolderId" required defaultValue="" className="admin-select">
+                <option value="" disabled>
+                  Select holder…
+                </option>
+                {targetHolders.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    #{formatTagNumber(h.tagNumber)} {h.name} (Pool {h.pool})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className="admin-button admin-button--primary">
+              Merge
+            </button>
           </form>
         ) : null}
       </td>

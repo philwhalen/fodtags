@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { formatTagNumber } from "@/lib";
+
 import {
   createHolderAction,
   poolSwitchAction,
@@ -12,7 +14,7 @@ import {
 type Holder = {
   id: number;
   name: string;
-  tagNumber: number;
+  tagNumber: number | null;
   pool: "A" | "B";
   entryDate: string;
   pdgaNumber: number | null;
@@ -128,7 +130,7 @@ export function HolderRow({
               <input
                 name="tagNumber"
                 type="number"
-                defaultValue={holder.tagNumber}
+                defaultValue={holder.tagNumber ?? ""}
                 required
                 className="admin-input"
               />
@@ -197,7 +199,7 @@ export function HolderRow({
     <tr>
       <td>{holder.id}</td>
       <td>{holder.name}</td>
-      <td className="admin-num">{holder.tagNumber}</td>
+      <td className="admin-num">{formatTagNumber(holder.tagNumber)}</td>
       <td>{holder.pool}</td>
       <td>{holder.entryDate}</td>
       <td className="admin-num">{holder.pdgaNumber ?? "—"}</td>
@@ -243,7 +245,7 @@ export function PoolSwitchForm({ holders }: { holders: Holder[] }) {
         <select name="holderId" required className="admin-select">
           {holders.map((h) => (
             <option key={h.id} value={h.id}>
-              #{h.tagNumber} {h.name} (Pool {h.pool})
+              #{formatTagNumber(h.tagNumber)} {h.name} (Pool {h.pool})
             </option>
           ))}
         </select>

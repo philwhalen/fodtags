@@ -1,7 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 
-import { formatCents } from "@/lib";
+import { formatCents, formatTagNumber } from "@/lib";
 import type { ProfileView } from "@/lib";
 
 export function ProfileHeader({ view }: { view: ProfileView["header"] }) {
@@ -11,7 +11,7 @@ export function ProfileHeader({ view }: { view: ProfileView["header"] }) {
       <dl className="profile-meta">
         <div>
           <dt>Tag #</dt>
-          <dd>{view.tagNumber}</dd>
+          <dd>{formatTagNumber(view.tagNumber)}</dd>
         </div>
         <div>
           <dt>Pool</dt>
@@ -35,6 +35,11 @@ export function ProfileHeader({ view }: { view: ProfileView["header"] }) {
         </div>
       </dl>
       <ul className="profile-flags" aria-label="Eligibility">
+        {view.provisional ? (
+          <li className="profile-flag" role="status">
+            Pending confirmation
+          </li>
+        ) : null}
         {view.poolBAccrual ? (
           <li className="profile-flag">Pool B accrual: {view.poolBAccrual}</li>
         ) : null}

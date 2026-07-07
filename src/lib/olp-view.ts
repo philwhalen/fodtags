@@ -16,7 +16,7 @@ export interface PublicOlpRow {
   holderId: number;
   name: string;
   slug: string;
-  tagNumber: number;
+  tagNumber: number | null;
   /** Eligible rows: 1..N over the eligible field, best score first. `null`
    * for not-eligible rows (Spec 06 §6.2: not ranked). */
   displayRank: number | null;

@@ -5,7 +5,7 @@ export function PendingReviewBanner({ count }: { count: number }) {
   }
 
   const label =
-    count === 1 ? "1 result pending review" : `${count} results pending review`;
+    count === 1 ? "1 player pending review" : `${count} players pending review`;
 
   return (
     <div className="banner-pending-review" role="status" aria-live="polite">

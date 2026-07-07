@@ -108,6 +108,7 @@ function makeProfile(overrides: Partial<PublicProfilePayload> = {}): PublicProfi
       { subLeague: "MID", payout: null, projected: true },
       { subLeague: "LATE", payout: null, projected: true },
     ],
+    provisional: false,
     updatedAt: "2026-07-01T00:00:00.000Z",
     stale: false,
     pendingReview: 0,

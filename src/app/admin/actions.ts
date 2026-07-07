@@ -15,6 +15,7 @@ import {
   addExpense,
   addTagSale,
   cancelEvent,
+  confirmHolder,
   createHolder,
   createHolderForEntrant,
   deleteAdjustment,
@@ -24,6 +25,7 @@ import {
   linkEntrant,
   markNonHolder,
   markSubLeagueComplete,
+  mergeProvisionalIntoHolder,
   recordPayout,
   recordPoolSwitch,
   registerEventSource,
@@ -229,6 +231,46 @@ export async function markNonHolderAction(formData: FormData): Promise<MutationR
     throw new AdminError("Invalid PDGA number.");
   }
   return markNonHolder(pdgaNumber, actorEmail);
+}
+
+/** Blank means "no tag yet" (Spec 10 §10.4 section A) — unlike
+ * `parseTagNumber`, which is used where a tag number is required. */
+function parseOptionalTagNumber(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    return null;
+  }
+  return parseTagNumber(trimmed);
+}
+
+export async function confirmHolderAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const id = Number.parseInt(String(formData.get("id") ?? ""), 10);
+  if (!Number.isFinite(id)) {
+    throw new AdminError("Invalid holder id.");
+  }
+  return confirmHolder(
+    {
+      id,
+      pool: parsePool(String(formData.get("pool") ?? "")),
+      tagNumber: parseOptionalTagNumber(String(formData.get("tagNumber") ?? "")),
+      name: String(formData.get("name") ?? "").trim(),
+      entryDate: String(formData.get("entryDate") ?? "").trim(),
+      ratingAtEntry: parseOptionalInt(String(formData.get("ratingAtEntry") ?? "")),
+      pdgaMembership: parseCheckbox(formData.get("pdgaMembership")),
+    },
+    actorEmail,
+  );
+}
+
+export async function mergeProvisionalIntoHolderAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const provisionalId = Number.parseInt(String(formData.get("provisionalId") ?? ""), 10);
+  const targetHolderId = Number.parseInt(String(formData.get("targetHolderId") ?? ""), 10);
+  if (!Number.isFinite(provisionalId) || !Number.isFinite(targetHolderId)) {
+    throw new AdminError("Invalid merge input.");
+  }
+  return mergeProvisionalIntoHolder(provisionalId, targetHolderId, actorEmail);
 }
 
 function parseRequiredInt(raw: string, label: string): number {

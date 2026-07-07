@@ -40,7 +40,7 @@ export interface StandingsRow {
   playerId: number;
   name: string;
   slug: string;
-  tagNumber: number;
+  tagNumber: number | null;
   points: number;
   pool: Pool;
   tieBrokenByTag: boolean;
@@ -59,9 +59,9 @@ export interface StandingsViewPayload {
    * from the most recently COMPLETED `refresh_runs` row. Always `false`
    * pre-Common-B, since the stub PDGA source never fails a source. */
   stale: boolean;
-  /** Count of PDGA results still awaiting director match confirmation
-   * (Spec 04 §4.4 "N results pending review"). Always `0` until Common B's
-   * match-review queue exists. */
+  /** Count of provisional (auto-added) holders awaiting confirmation plus
+   * entrants still needing a link decision (Spec 04 §4.4 "N players
+   * pending review"; Spec 03 §3.5/§3.6). */
   pendingReview: number;
   /** Sub-league views only (Spec 04 §4.3): mirrors that sub-league's admin
    * `complete` flag — whether the computed Podium bonus shown here has

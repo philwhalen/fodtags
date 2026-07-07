@@ -89,7 +89,7 @@ The **default** all-players view (`/2026/rounds`, no params) is **All sub-league
 
 ## 5.6 States
 
-- Only **tag holders** are listed. Non-tag-holder rounds are **hidden** — they exist in the ingested data only to compute finish order ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching-admin-maps-app-assists)).
+- Only **tag holders** are listed (including provisional auto-added ones — [Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching--auto-add-app-bootstraps-admin-confirms)). Non-tag-holder rounds are **hidden** — they exist in the ingested data only to compute finish order.
 - **Empty / pre-season:** before any rounds, show the roster with 0 rounds and no trend (present rating shown if known), **not** an error — mirroring [Spec 04 §4.4](./04-Feature-Leaderboards.md#44-states). A holder with no rounds in the active scope shows a **0 count** and an empty per-player table with a friendly "No rounds yet for this filter" note.
 - **Freshness / stale:** every view shows "Updated {time} ET" and a **stale** badge when the underlying sources are stale, exactly as [Spec 04 §4.4](./04-Feature-Leaderboards.md#44-states) / [Spec 03 §3.8](./03-Data-Ingestion-and-PDGA.md#38-resilience--failure-handling). Staleness is scoped to the sources in view (a specific sub-league reflects only that source's staleness; All reflects any).
 - **Data-quality banner:** unmatched PDGA entrants do **not** appear as phantom players — they wait in the admin queue; a non-alarming "N results pending review" note appears as elsewhere ([Spec 04 §4.4](./04-Feature-Leaderboards.md#44-states)).

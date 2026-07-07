@@ -28,7 +28,15 @@ let insertHolder: (input: {
   ratingAtEntry: number;
   pdgaMembership: boolean;
 }) => number;
-let listHolders: (seasonYear: number) => Array<{ id: number; name: string }>;
+let listHolders: (seasonYear: number) => Array<{
+  id: number;
+  name: string;
+  pdgaNumber: number | null;
+  tagNumber: number | null;
+  pool: "A" | "B";
+  confirmed: boolean;
+  pdgaMembership: boolean;
+}>;
 let listEvents: (
   seasonYear: number,
 ) => Array<{ id: number; eventSourceId: number; roundOrdinal: number | null; canceled: boolean }>;
@@ -186,28 +194,40 @@ describe("ingestion acceptance (Spec 03/10)", () => {
     expect(standingsPayloadForCompare("championship/pool-b")).toBe(manualPoolB);
   });
 
-  it("unmatched entrant is queued, excluded from points, then stays resolved after link", async () => {
+  it("brand-new PDGA entrant auto-adds as a provisional holder, scores immediately, and a director can still override the link", async () => {
     resetSingleFlight();
     await runRefresh({ trigger: "manual", seasonYear: SEASON_YEAR });
 
+    // Sub-plan 03 (auto-add): a PDGA#-having entrant with zero name hits is
+    // no longer queued as "unmatched" — it auto-adds as a provisional tag
+    // holder on the very refresh that first sees it (Spec 03 §3.5/§3.6).
+    const goheen = listHolders(SEASON_YEAR).find((h) => h.pdgaNumber === UNMATCHED_PDGA);
+    expect(goheen).toBeDefined();
+    expect(goheen!.confirmed).toBe(false);
+    expect(goheen!.tagNumber).toBeNull();
+    expect(goheen!.pool).toBe("A");
+    expect(goheen!.pdgaMembership).toBe(true);
+
     expect(listPendingForQueue(SEASON_YEAR).some((e) => e.pdgaNumber === UNMATCHED_PDGA)).toBe(
-      true,
+      false,
     );
 
-    const beforeLink = computeSeason(loadSeasonSnapshot(SEASON_YEAR));
-    const unmatchedRows = listResultsBySeason(SEASON_YEAR).filter(
+    const goheenRows = listResultsBySeason(SEASON_YEAR).filter(
       (r) => r.pdgaNumber === UNMATCHED_PDGA,
     );
-    expect(unmatchedRows.length).toBeGreaterThan(0);
-    expect(unmatchedRows.every((r) => r.holderId === null)).toBe(true);
+    expect(goheenRows.length).toBeGreaterThan(0);
+    expect(goheenRows.every((r) => r.holderId === goheen!.id)).toBe(true);
+
+    const beforeLink = computeSeason(loadSeasonSnapshot(SEASON_YEAR));
     const scoredHolderIds = new Set([
       ...beforeLink.championship.A.map((row) => row.holderId),
       ...beforeLink.championship.B.map((row) => row.holderId),
     ]);
-    for (const row of unmatchedRows) {
-      expect(scoredHolderIds.has(row.holderId as number)).toBe(false);
-    }
+    expect(scoredHolderIds.has(goheen!.id)).toBe(true);
 
+    // A director can still override an auto-add by re-linking the PDGA# to
+    // a different (existing) holder — `linkEntrant` doesn't care whether
+    // the PDGA# already resolved via auto-add; admin always wins.
     const alex = listHolders(SEASON_YEAR).find((h) => h.name === "Alex Rivera")!;
     await linkEntrant(UNMATCHED_PDGA, alex.id, ACTOR);
 
@@ -217,6 +237,11 @@ describe("ingestion acceptance (Spec 03/10)", () => {
     resetSingleFlight();
     await runRefresh({ trigger: "manual", seasonYear: SEASON_YEAR });
 
+    // Sticky: re-running never re-creates the provisional holder or
+    // re-queues the entrant, and the admin override survives the refresh.
+    expect(
+      listHolders(SEASON_YEAR).filter((h) => h.pdgaNumber === UNMATCHED_PDGA).length,
+    ).toBe(1);
     expect(listPendingForQueue(SEASON_YEAR).some((e) => e.pdgaNumber === UNMATCHED_PDGA)).toBe(
       false,
     );

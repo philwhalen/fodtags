@@ -1,7 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 
-import { roundToOneDecimal } from "@/lib";
+import { formatTagNumber, roundToOneDecimal } from "@/lib";
 import type { PublicStandingsRow } from "@/lib/standings-view";
 
 /**
@@ -54,7 +54,7 @@ export function StandingsTable({
                   </Link>
                 )}
               </td>
-              <td data-label="Tag #">{row.tagNumber}</td>
+              <td data-label="Tag #">{formatTagNumber(row.tagNumber)}</td>
               <td data-label="Points">{roundToOneDecimal(row.points)}</td>
             </tr>
           ))}

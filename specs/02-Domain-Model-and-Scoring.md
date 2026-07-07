@@ -9,7 +9,7 @@ This is the **computation contract**. Because the app computes everything ([Mast
 ## 2.1 Core entities
 
 - **Player** — a person; may have a PDGA number and rating. Not all PDGA entrants are players in our sense.
-- **TagHolder** — a Player who bought a tag: `{ player, tagNumber, pool, entryDate, pdgaNumber, ratingAtEntry, active }`.
+- **TagHolder** — a Player who holds (or is provisionally recorded as holding) a tag: `{ player, tagNumber, pool, entryDate, pdgaNumber, ratingAtEntry, active, confirmed }`. `tagNumber` is **nullable** — a holder **auto-added** from the PDGA scrape ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching--auto-add-app-bootstraps-admin-confirms)) has no tag number until a director assigns one. `confirmed` distinguishes a director-**confirmed** holder from an auto-added **provisional** one (`confirmed = false`); provisional holders still score but carry a "pending confirmation" marker until reviewed.
 - **Season** — `{ year, subLeagues[], tournaments[], fodOpen }`. Launch: 2026.
 - **SubLeague** — `{ name: Early|Mid|Late, pdgaEventId, startDate, endDate, complete, leagueNights[], podium }`. `startDate`/`endDate` are **admin-configured** — they bound the sub-league window and fix the OLP "last day"; `complete` is an **admin flag** a director sets to finalize the sub-league (folds in the Podium bonus, flips OLP payouts to final). See [Spec 10 §10.3](./10-Admin-Console.md#103-pdga-event-configuration).
 - **Event** — a scored competition instance with a `type ∈ {LeagueNight, Podium, Tournament, FODOpen}` and results. **One PDGA round within a sub-league's event = one League Night.** The **Podium is computed** from the sub-league's standings (§2.4.1), not ingested as its own PDGA event.
@@ -20,6 +20,7 @@ This is the **computation contract**. Because the app computes everything ([Mast
 - **Pool A**: open to anyone.
 - **Pool B**: only players **<900 rated at the time of their first entered league round**.
 - Players may pick a pool at tag purchase; unspecified → placed in the **lowest pool they're eligible for**; unrated → placed by directors (admin input).
+- **Auto-added (provisional) holders default to Pool A** regardless of rating ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching--auto-add-app-bootstraps-admin-confirms)) — the conservative default (Pool A is open to anyone and never wrongly grants Pool B points). A director assigns Pool B on confirmation when appropriate, subject to the <900-at-first-entry rule above (and the [Spec 10 §10.2](./10-Admin-Console.md#102-roster--tag-management) warning).
 - A player may **earn Pool B points only while their rating is <920**. Above that, Pool B results stop accruing.
 - Only players rated **≤920** are eligible for the Pool B skins match.
 - **Pool switches** forfeit all points earned before the switch and require director approval (admin action; see [Spec 10](./10-Admin-Console.md)).
@@ -29,6 +30,7 @@ This is the **computation contract**. Because the app computes everything ([Mast
 ## 2.3 Entry & eligibility timing
 
 - A player is entered on their **tag purchase date**. **No finish before that date earns points.**
+- An **auto-added (provisional) holder** is provisionally entered on the date of their **first ingested league round** ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching--auto-add-app-bootstraps-admin-confirms)), so all of their observed rounds score. A director corrects this to the true purchase date on confirmation if it was later.
 - A finish **on the purchase date** counts (even if the tag was bought after the event finished).
 - The "end" of a sub-league is its **last League Night**; a tag bought that day is still eligible for that sub-league's Podium bonus.
 - Only results where the holder's **tag was physically present** (able to be won/lost) earn points. This is an admin-confirmable attribute per result when it deviates from default.
@@ -83,6 +85,7 @@ A player's Championship total is **not** the raw sum of all results. Each event 
   - Podium ties: tag number **upon sub-league completion**.
   - Overall ties: tag number **upon the last League Night of the Season**.
 - Tournament **1st-place** ties → broken by **playoff** when possible; all other tournament ties → tag number.
+- **Unassigned tag number:** an auto-added holder with no tag number yet (§2.1) **sorts after all numbered holders** in any tag-number tie-break (a lower number always wins, and "no number" is treated as the highest); ties among multiple unnumbered holders resolve by **holder ID (creation order)**. Once a director assigns a real tag number, normal low-number-wins ordering applies.
 
 ## 2.7 Cancellations & partial events
 

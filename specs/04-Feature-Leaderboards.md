@@ -48,7 +48,7 @@ A sub-league is **finalized** — folding in the computed Podium bonus ([Spec 02
 
 - **Loading / empty:** before any rounds, show the roster at 0 points, not an error.
 - **Freshness:** every leaderboard shows "Updated {time} ET" and a **stale** badge if the underlying sources are stale ([Spec 03 §3.8](./03-Data-Ingestion-and-PDGA.md#38-resilience--failure-handling)).
-- **Data-quality banner:** if unmatched PDGA players exist for the scope, show a non-alarming note ("N results pending review") rather than omitting silently.
+- **Data-quality banner:** if there are unresolved player items for the scope — **provisional (auto-added) holders awaiting confirmation** and/or entrants still needing a link decision ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching--auto-add-app-bootstraps-admin-confirms)) — show a non-alarming note ("N players pending review") rather than omitting silently. Provisional holders **do** appear in standings (flagged pending); the banner signals their records aren't yet confirmed.
 - **Ties:** visually indicate a tie is broken by tag number (e.g., subtle marker/tooltip).
 
 ## 4.5 Deep links (shareable)

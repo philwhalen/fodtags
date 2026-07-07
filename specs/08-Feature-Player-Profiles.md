@@ -20,8 +20,9 @@ This feature is a **read-only projection/aggregation** like Features 1–5: it r
 
 Shown at the top of every profile:
 
-- **Full name**, **tag number**, **pool** (A / B), **present (official) PDGA rating** (or **"—" (Unrated)**), and **PDGA number** linking out to the holder's PDGA profile (public data — privacy decision in [Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)).
+- **Full name**, **tag number** (**"—"** when unassigned for a provisional holder), **pool** (A / B), **present (official) PDGA rating** (or **"—" (Unrated)**), and **PDGA number** linking out to the holder's PDGA profile (public data — privacy decision in [Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)).
 - **Eligibility flags** (text badges, not color-only — [Spec 11 §11.2](./11-UX-and-Nonfunctional.md#112-accessibility)):
+  - **Pending confirmation** — shown for a **provisional (auto-added, unconfirmed)** holder ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching--auto-add-app-bootstraps-admin-confirms)); the record was bootstrapped from the PDGA scrape and awaits director confirmation. Omitted for confirmed holders.
   - **Pool B accrual** — `active` or `inactive` per the 920 rule ([Spec 02 §2.2](./02-Domain-Model-and-Scoring.md#22-pools--eligibility)); shown only for Pool B holders (Pool A omits this flag).
   - **OLP eligible** — `yes` or `no`; when `no`, a short reason: `"N rounds"` (fewer than 4 in the **current** sub-league) and/or `"no PDGA membership"`.
   - **Skins qualified** — `yes` or `no` for the holder's pool ([Spec 02 §2.9](./02-Domain-Model-and-Scoring.md#29-skins-match-qualification)); when `no` but the holder is in the top-4 point earners, show `"not eligible (rating >920)"` for Pool B as appropriate.
@@ -48,7 +49,7 @@ Each tag holder has a **canonical, human-readable slug** backed by the internal 
 
 1. Start from the holder's roster **name**, normalized: trim, lowercase, replace non-alphanumeric runs with `-`, strip leading/trailing hyphens (same rules as today's `slugifyName`).
 2. If **no other active holder** in the season shares that base slug, the canonical slug **is** the base slug (e.g. `jonathan-svendsen`).
-3. If two or more holders collide on the base slug, append `-{tagNumber}` to **each** colliding holder's canonical slug (e.g. `alex-smith-12`, `alex-smith-47`).
+3. If two or more holders collide on the base slug, append `-{tagNumber}` to **each** colliding holder's canonical slug (e.g. `alex-smith-12`, `alex-smith-47`). A colliding holder with **no tag number** (auto-added/provisional — [Spec 02 §2.1](./02-Domain-Model-and-Scoring.md#21-core-entities)) falls back to `-{holderId}` so every canonical slug stays unique and stable.
 
 Slugs are computed **once at read-model build time** from the season roster and stamped on every holder-scoped read-model row. All public links (leaderboards, OLP, score sheet, rounds, profile) use the **same canonical slug** — no ad-hoc re-slugification at render time.
 
@@ -73,7 +74,7 @@ The legacy **`/2026/players/search`** placeholder is **retired**: requests redir
 
 The `/2026/players` landing replaces the old search placeholder:
 
-- One row per **active tag holder**: name (links to profile), tag #, pool, present rating (or Unrated), Championship rank in their pool, and a round count (all sub-leagues, League Nights only — same default scope as `/2026/rounds`).
+- One row per **active tag holder**: name (links to profile), tag # (**"—"** when unassigned for a provisional holder), pool, present rating (or Unrated), Championship rank in their pool, and a round count (all sub-leagues, League Nights only — same default scope as `/2026/rounds`). A **provisional (auto-added, unconfirmed)** holder ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching--auto-add-app-bootstraps-admin-confirms)) carries a small **"pending confirmation"** text badge (not color-only — [Spec 11 §11.2](./11-UX-and-Nonfunctional.md#112-accessibility)).
 - **Ordering:** present rating descending; unrated last; ties by tag number ascending (same as [Spec 05 §5.2](./05-Feature-Rounds-and-Ratings.md#52-all-players-roster-list)).
 - **Name filter:** client-side, reusing [Spec 04 §4.7](./04-Feature-Leaderboards.md#47-name-search); mirrored to `?q=` for shareable filtered views.
 - Standard freshness/stale/pending-review banners.
@@ -117,7 +118,7 @@ Rounds (§8.1 item 3) and OLP detail (§8.1 item 4) respect an **active sub-leag
 
 ## 8.6 States
 
-- **Unmatched-data awareness:** if unmatched PDGA results exist season-wide, show the standard **"N results pending review"** banner ([Spec 04 §4.4](./04-Feature-Leaderboards.md#44-states)). The profile does **not** attempt to show per-holder unmatched counts at launch.
+- **Unmatched-data awareness:** if unresolved player items exist season-wide (provisional holders awaiting confirmation and/or link-decision entrants), show the standard **"N players pending review"** banner ([Spec 04 §4.4](./04-Feature-Leaderboards.md#44-states)). A provisional holder's **own** profile also shows the **"Pending confirmation"** header badge (§8.1). The profile does **not** attempt to show per-holder unmatched counts at launch.
 - **Freshness / stale / pending-review banners** as elsewhere, using the worst applicable flag across the profile's source views.
 - **Pre-season / empty:** a holder with no rounds shows 0 counts and friendly empty notes in each section — never an error.
 - **Projected vs final:** OLP payouts, Podium-withheld sub-league standings, and skins/OLP purse labels follow the same projected/final rules as [Spec 06 §6.3](./06-Feature-OLP-Pot.md#63-payouts--pot), [Spec 04 §4.3](./04-Feature-Leaderboards.md#43-sub-league-leaderboard-content), and [Spec 09 §9.4](./09-Financials.md#94-correctness--display).

@@ -13,6 +13,7 @@ export {
   formatCents,
 } from "./money";
 export { normalizeName } from "./normalize-name";
+export { formatTagNumber, tagSortKey } from "./tag-number";
 export { todayEt } from "./date-et";
 export { resolveCurrentSubLeague } from "./current-sub-league";
 export type { SubLeagueWindow } from "./current-sub-league";
@@ -85,12 +86,14 @@ export type {
   SkinsRow,
 } from "./season-results";
 
-/** A single ranked row in a pool's leaderboard (Spec 04 §4.2 columns). */
+/** A single ranked row in a pool's leaderboard (Spec 04 §4.2 columns).
+ * `tagNumber` is null for a provisional (not-yet-confirmed) holder — Spec
+ * 03 §3.5/§3.6 — and renders as "—" (`formatTagNumber`). */
 export interface StandingRow {
   rank: number;
   playerId: number;
   name: string;
-  tagNumber: number;
+  tagNumber: number | null;
   points: number;
   pool: Pool;
 }

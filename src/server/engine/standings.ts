@@ -1,13 +1,16 @@
 // PURE MODULE — see src/server/engine/index.ts for the purity contract.
 // No DB, no clock, no fetch, no Next.js, no `server-only`.
 
+import { tagSortKey } from "@/lib";
 import type { Pool, StandingRow } from "@/lib";
 
-/** A tag holder as the engine needs to see it — a plain, DB-shape-agnostic object. */
+/** A tag holder as the engine needs to see it — a plain, DB-shape-agnostic
+ * object. `tagNumber` is null for a provisional (not-yet-confirmed) holder
+ * (Spec 03 §3.5/§3.6). */
 export interface StandingsHolder {
   id: number;
   name: string;
-  tagNumber: number;
+  tagNumber: number | null;
   pool: Pool;
 }
 
@@ -39,7 +42,7 @@ export function computeStandings(input: StandingsInput): StandingsOutput {
     input.holders
       .filter((h) => h.pool === pool)
       .slice()
-      .sort((a, b) => a.tagNumber - b.tagNumber)
+      .sort((a, b) => tagSortKey(a.tagNumber) - tagSortKey(b.tagNumber) || a.id - b.id)
       .map((h, index) => ({
         rank: index + 1,
         playerId: h.id,

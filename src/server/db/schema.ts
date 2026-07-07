@@ -43,7 +43,10 @@ export const tagHolders = sqliteTable(
       .notNull()
       .references(() => seasons.year),
     name: text("name").notNull(),
-    tagNumber: integer("tag_number").notNull(),
+    /** Null until a director assigns one — auto-added holders (Spec 03 §3.5)
+     * are created without a tag number and sort last (Spec 02 §2.1) until
+     * confirmed. */
+    tagNumber: integer("tag_number"),
     /** 'A' | 'B' — see `poolEnum`. */
     pool: text("pool", { enum: poolEnum }).notNull(),
     /** UTC ISO-8601 date/time the tag was entered into the league. */
@@ -55,6 +58,10 @@ export const tagHolders = sqliteTable(
     /** PDGA membership on file — required for OLP eligibility (Spec 06
      * §6.2); independent of having a `pdgaNumber` recorded. */
     pdgaMembership: integer("pdga_membership", { mode: "boolean" }).notNull().default(false),
+    /** False for an auto-added provisional holder awaiting director
+     * confirmation (pool + optional tag number) — Spec 02 §2.1, Spec 03
+     * §3.5. Existing/seeded/admin-created holders default true. */
+    confirmed: integer("confirmed", { mode: "boolean" }).notNull().default(true),
   },
   (table) => [
     uniqueIndex("tag_holders_season_tag_number_idx").on(table.seasonYear, table.tagNumber),

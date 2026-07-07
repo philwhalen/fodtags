@@ -19,7 +19,7 @@ export interface RoundsHolderEntry {
   holderId: number;
   name: string;
   slug: string;
-  tagNumber: number;
+  tagNumber: number | null;
   presentRating: number | null;
   rounds: RoundRow[];
 }
@@ -43,7 +43,7 @@ export interface RosterRow {
   holderId: number;
   name: string;
   slug: string;
-  tagNumber: number;
+  tagNumber: number | null;
   presentRating: number | null;
   roundCount: number;
   trend: number[];

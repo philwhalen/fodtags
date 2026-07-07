@@ -20,6 +20,15 @@ describe("buildCanonicalSlugs", () => {
     expect(slugs.get(1)).toBe("alex-smith-12");
     expect(slugs.get(2)).toBe("alex-smith-47");
   });
+
+  it("falls back to the holder ID when a colliding holder has no tag number", () => {
+    const slugs = buildCanonicalSlugs([
+      { id: 1, name: "Alex Smith", tagNumber: 12 },
+      { id: 2, name: "Alex Smith", tagNumber: null },
+    ]);
+    expect(slugs.get(1)).toBe("alex-smith-12");
+    expect(slugs.get(2)).toBe("alex-smith-2");
+  });
 });
 
 describe("resolveHolderSlug", () => {
