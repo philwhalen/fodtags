@@ -1323,6 +1323,19 @@
   margin: 0;
 }
 
+.profile-tag-note {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--shell-muted);
+}
+
+.profile-tag-note-link {
+  color: inherit;
+  text-decoration: underline;
+}
+
 .profile-flags {
   display: flex;
   flex-wrap: wrap;

@@ -116,7 +116,10 @@ export function buildPlayersViews(
       holderId: holder.id,
       name: holder.name,
       slug: slugById.get(holder.id) ?? String(holder.id),
-      tagNumber: holder.tagNumber,
+      // Current tag (Spec 08 §8.1/§8.3; tag-reassignment sub-plan 04) — the
+      // holder's latest tag-out, not the stable initial tag (which drives
+      // slug generation only — see `holder-slug.ts`).
+      tagNumber: results.currentTagByHolder[holder.id] ?? null,
       pool: holder.pool,
       pdgaNumber: holder.pdgaNumber,
       presentRating: roundsEntry?.presentRating ?? null,
@@ -162,7 +165,8 @@ export function buildPlayersViews(
       holderId: holder.id,
       name: holder.name,
       slug,
-      tagNumber: holder.tagNumber,
+      // Current tag (Spec 08 §8.1) — see the index row comment above.
+      tagNumber: results.currentTagByHolder[holder.id] ?? null,
       pool: holder.pool,
       pdgaNumber: holder.pdgaNumber,
       pdgaMembership: holder.pdgaMembership,

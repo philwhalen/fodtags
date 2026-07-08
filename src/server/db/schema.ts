@@ -43,10 +43,20 @@ export const tagHolders = sqliteTable(
       .notNull()
       .references(() => seasons.year),
     name: text("name").notNull(),
-    /** Null until a director assigns one — auto-added holders (Spec 03 §3.5)
-     * are created without a tag number and sort last (Spec 02 §2.1) until
-     * confirmed. */
+    /** The holder's INITIAL (stable) tag — admin-set, drives slug
+     * generation (Spec 08 §8.2) and seeds the nightly reassignment timeline
+     * (Spec 02 §2.10). Null until a director assigns one — auto-added
+     * holders (Spec 03 §3.5) are created without a tag number and sort last
+     * (Spec 02 §2.1) until confirmed. Does NOT change as tags are
+     * reassigned night to night — see `currentTagNumber` for that. */
     tagNumber: integer("tag_number"),
+    /** The holder's latest tag-out (Spec 02 §2.10) — a derived cache
+     * recomputed by the engine's tag timeline and written back by the
+     * publish transaction (sub-plan 04). Null until the holder has an
+     * initial tag and at least one computed/overridden tag-out. This is
+     * the number roster/public views show as "tag #"; `tagNumber` above
+     * stays the stable, admin-set initial tag. */
+    currentTagNumber: integer("current_tag_number"),
     /** 'A' | 'B' — see `poolEnum`. */
     pool: text("pool", { enum: poolEnum }).notNull(),
     /** UTC ISO-8601 date/time the tag was entered into the league. */
@@ -65,6 +75,12 @@ export const tagHolders = sqliteTable(
   },
   (table) => [
     uniqueIndex("tag_holders_season_tag_number_idx").on(table.seasonYear, table.tagNumber),
+    // A night's tag-outs are always a permutation of its tag-ins (Spec 02
+    // §2.10 architecture decision 6), so `currentTagNumber` is always
+    // distinct among holders that have one; SQLite unique indexes treat
+    // NULLs as distinct, so holders without a computed current tag yet
+    // don't collide.
+    uniqueIndex("tag_holders_season_current_tag_idx").on(table.seasonYear, table.currentTagNumber),
     index("tag_holders_season_year_idx").on(table.seasonYear),
   ],
 );
@@ -279,6 +295,41 @@ export const poolSwitches = sqliteTable(
   (table) => [
     uniqueIndex("pool_switches_holder_effective_date_idx").on(table.holderId, table.effectiveDate),
     index("pool_switches_season_year_idx").on(table.seasonYear),
+  ],
+);
+
+/**
+ * Director override of a holder's observed tag-out for one League Night
+ * (Spec 02 §2.10, Spec 10 §10.9) — the ONLY new admin input the tag
+ * reassignment feature adds. The resolved per-night tag timeline itself is
+ * computed engine output (published in the read model), not a stored
+ * table; this row just lets a director correct what the engine would
+ * otherwise compute for a given (event, holder).
+ */
+export const tagOverrides = sqliteTable(
+  "tag_overrides",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    seasonYear: integer("season_year")
+      .notNull()
+      .references(() => seasons.year),
+    /** The League Night this observed tag-out applies to. */
+    eventId: integer("event_id")
+      .notNull()
+      .references(() => events.id),
+    holderId: integer("holder_id")
+      .notNull()
+      .references(() => tagHolders.id),
+    /** The observed tag the holder left this night with. */
+    tagOut: integer("tag_out").notNull(),
+    /** Director email — an override is always director-decided (Spec 10
+     * §10.9). */
+    decidedBy: text("decided_by").notNull(),
+    decidedAt: text("decided_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("tag_overrides_event_holder_idx").on(table.eventId, table.holderId),
+    index("tag_overrides_season_year_idx").on(table.seasonYear),
   ],
 );
 

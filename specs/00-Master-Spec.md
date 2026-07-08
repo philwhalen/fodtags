@@ -55,6 +55,7 @@ These constrain every sub-spec. Change them here first.
 | **Architecture role** | App **computes** standings/points/OLP/pots from raw data + rules. Not a mirror of the Sheet. |
 | **Leaderboard scope** | "Overall" = full-year **Championship** points; "season" toggle = the current **sub-league** (Early / Mid / Late). |
 | **Ranking scope** | **All event finishes are ranked per-pool** — League Nights, Podiums, Tournaments, and the FOD Open. Pool A and Pool B each have their own 1st place at every event. |
+| **Tag numbers** | **Dynamic.** Tags are physical and **reassigned every League Night** — pooled across both pools and re-handed-out by combined-field finishing order (lowest score → lowest tag). The app **computes** the nightly reassignment from scores (director-overridable) and **retains the full history**; tie-breaks read the tag **as of** the relevant moment. Directors edit only a holder's **initial tag**; the current tag is derived. ([Spec 02 §2.10](./02-Domain-Model-and-Scoring.md#210-tag-numbers--nightly-reassignment).) |
 | **Sub-league leaderboard** | Shows **League-Night points accrued in that sub-league; the Podium bonus folds in once the sub-league is final.** |
 | **Years in scope** | **2026 only** at launch; model data so past seasons can be added later. |
 | **PDGA event shape** | Each sub-league (Early/Mid/Late) is a **separate PDGA event ID**; FOD tournaments and the FOD Open are their own PDGA events too. |

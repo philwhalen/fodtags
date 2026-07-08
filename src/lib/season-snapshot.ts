@@ -26,9 +26,12 @@ export type EventType = "LeagueNight" | "Tournament" | "FODOpen";
 
 export interface SeasonSnapshotHolder {
   id: number;
-  /** Null for a provisional (auto-added, not-yet-confirmed) holder — Spec
-   * 03 §3.5/§3.6. Sorts last via `tagSortKey` (Spec 02 §2.6) wherever tag
-   * number drives a tie-break. */
+  /** The holder's INITIAL (stable) tag — admin-set; seeds the nightly tag
+   * reassignment timeline (Spec 02 §2.10) and does not change as tags
+   * churn night to night (see the engine's `currentTagNumber` output for
+   * that). Null for a provisional (auto-added, not-yet-confirmed) holder —
+   * Spec 03 §3.5/§3.6. Sorts last via `tagSortKey` (Spec 02 §2.6) wherever
+   * a tag-in/tag-out number drives a tie-break before the timeline exists. */
   tagNumber: number | null;
   /** Pool at initial entry (Spec 02 §2.2); `poolSwitches` may move a
    * holder from here over the course of the season. */
@@ -43,6 +46,17 @@ export interface SeasonSnapshotHolder {
    * eligibility test (Spec 02 §2.2: "<900 rated at first entry"). */
   ratingAtEntry: number | null;
   active: boolean;
+}
+
+/** Director override of a holder's observed tag-out for one League Night
+ * (Spec 02 §2.10, Spec 10 §10.9) — the only new admin INPUT the tag
+ * reassignment feature adds; the pure timeline pre-pass (sub-plan 02)
+ * applies these over whatever it would otherwise compute. */
+export interface SeasonSnapshotTagOverride {
+  eventId: number;
+  holderId: number;
+  /** The observed tag the holder left this night with. */
+  tagOut: number;
 }
 
 export interface SeasonSnapshotPoolSwitch {
@@ -185,6 +199,9 @@ export interface SeasonSnapshot {
   seasonYear: number;
   holders: SeasonSnapshotHolder[];
   poolSwitches: SeasonSnapshotPoolSwitch[];
+  /** Director corrections to the engine-computed nightly tag-out (Spec 02
+   * §2.10) — consumed by the timeline pre-pass (sub-plan 02). */
+  tagOverrides: SeasonSnapshotTagOverride[];
   ratings: SeasonSnapshotRating[];
   subLeagues: SeasonSnapshotSubLeague[];
   /** Count of registered TOURNAMENT sources for the season — derives the

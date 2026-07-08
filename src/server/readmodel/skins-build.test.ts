@@ -31,6 +31,8 @@ function minimalResults(overrides: Partial<SeasonResults> = {}): SeasonResults {
       skinsPaidOut: { A: false, B: false },
       projected: true,
     },
+    tagAssignments: [],
+    currentTagByHolder: {},
     ...overrides,
   };
 }

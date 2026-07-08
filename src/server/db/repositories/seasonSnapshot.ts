@@ -12,6 +12,7 @@ import { listExpenses } from "@server/db/repositories/expenses";
 import { listPayouts } from "@server/db/repositories/payouts";
 import { listSwitchesBySeason } from "@server/db/repositories/poolSwitches";
 import { listRatingsBySeason } from "@server/db/repositories/ratingsHistory";
+import { listOverridesBySeason } from "@server/db/repositories/tagOverrides";
 import { listTagSales } from "@server/db/repositories/tagSales";
 import { listHolders } from "@server/db/repositories/tagHolders";
 import type { EventSourceCategory, SeasonSnapshot, SubLeagueType } from "@/lib";
@@ -56,6 +57,10 @@ function isSubLeagueType(x: string): x is SubLeagueType {
  *     any, are dropped — Spec 09's `$1 x paidEntries` OLP pot is a
  *     sub-league-only concept); `computeSeason` sums them per sub-league
  *     itself, so no aggregation happens here.
+ *   - `tagOverrides` — a straight passthrough of `tag_overrides` rows (Spec
+ *     02 §2.10 architecture decision 3): the only new admin INPUT the tag
+ *     reassignment feature adds. The resolved per-night tag timeline itself
+ *     is computed engine output, not loaded here.
  *   - `financial` — openings, per-night paid+ace counts (with event date
  *     and sub-league), tag sales, payouts, expenses, and adjustments from
  *     the Common-C financial tables (Spec 09 §9.2). The coarse `entryCounts`
@@ -70,6 +75,7 @@ export function loadSeasonSnapshot(seasonYear: number): SeasonSnapshot {
   const results = listResultsBySeason(seasonYear);
   const ratings = listRatingsBySeason(seasonYear);
   const switches = listSwitchesBySeason(seasonYear);
+  const overrides = listOverridesBySeason(seasonYear);
   const entryCounts = listEntryCounts(seasonYear);
 
   const sourceById = new Map(sources.map((s) => [s.id, s]));
@@ -130,6 +136,11 @@ export function loadSeasonSnapshot(seasonYear: number): SeasonSnapshot {
       holderId: s.holderId,
       effectiveDate: s.effectiveDate,
       toPool: s.toPool,
+    })),
+    tagOverrides: overrides.map((o) => ({
+      eventId: o.eventId,
+      holderId: o.holderId,
+      tagOut: o.tagOut,
     })),
     ratings: ratings.map((r) => ({
       holderId: r.holderId,

@@ -11,7 +11,17 @@ export function ProfileHeader({ view }: { view: ProfileView["header"] }) {
       <dl className="profile-meta">
         <div>
           <dt>Tag #</dt>
-          <dd>{formatTagNumber(view.tagNumber)}</dd>
+          <dd>
+            {formatTagNumber(view.tagNumber)}
+            <span className="profile-tag-note">
+              {" "}
+              (current — see night-by-night tag movement in the{" "}
+              <Link href={view.roundsHref as Route} className="profile-tag-note-link">
+                Rounds table
+              </Link>
+              )
+            </span>
+          </dd>
         </div>
         <div>
           <dt>Pool</dt>

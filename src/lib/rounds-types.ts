@@ -13,6 +13,17 @@ export interface RoundRow {
   roundOrdinal: number | null;
   scoreToPar: number;
   roundRating: number | null;
+  /** The tag the holder held going into this round (Spec 02 §2.10; Spec 05
+   * §5.3 Tag column). For a League Night, the night's tag-in from the
+   * engine's tag timeline; for Tournament/FOD Open (no reassignment),
+   * equals `tagOut` — the holder's tag as of that event's date. `null`
+   * when the holder held no tag yet. */
+  tagIn: number | null;
+  /** The tag the holder held after this round (equal to `tagIn` for a
+   * League Night where the reassignment left the holder unchanged, and
+   * always equal to `tagIn` for Tournament/FOD Open). `null` when the
+   * holder held no tag yet. */
+  tagOut: number | null;
 }
 
 export interface RoundsHolderEntry {

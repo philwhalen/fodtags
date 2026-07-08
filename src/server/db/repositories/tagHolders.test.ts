@@ -19,16 +19,25 @@ let getHolder: typeof import("@server/db/repositories/tagHolders").getHolder;
 let findHolderByTagNumber: typeof import("@server/db/repositories/tagHolders").findHolderByTagNumber;
 let listProvisionalHolders: typeof import("@server/db/repositories/tagHolders").listProvisionalHolders;
 let updateHolder: typeof import("@server/db/repositories/tagHolders").updateHolder;
+// `currentTagNumber` has no dedicated repo setter yet (sub-plan 04 writes
+// it back inside the publish transaction) — these tests exercise the raw
+// column/index directly via the drizzle client, same as `insertSeasonRow`
+// does in domainSchema.test.ts.
+let setCurrentTagNumber: (id: number, currentTagNumber: number | null) => void;
 
 beforeAll(async () => {
   tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "fodtags-vitest-tagholders-"));
   process.env.DATA_DIR = tempDir;
 
-  const [{ applyMigrations }, { seed }, tagHoldersRepo] = await Promise.all([
-    import("@server/db/migrate"),
-    import("@server/db/seed"),
-    import("@server/db/repositories/tagHolders"),
-  ]);
+  const [{ applyMigrations }, { seed }, tagHoldersRepo, dbClientMod, schemaMod, drizzleOrmMod] =
+    await Promise.all([
+      import("@server/db/migrate"),
+      import("@server/db/seed"),
+      import("@server/db/repositories/tagHolders"),
+      import("@server/db/client"),
+      import("@server/db/schema"),
+      import("drizzle-orm"),
+    ]);
 
   insertHolder = tagHoldersRepo.insertHolder;
   listHolders = tagHoldersRepo.listHolders;
@@ -36,6 +45,13 @@ beforeAll(async () => {
   findHolderByTagNumber = tagHoldersRepo.findHolderByTagNumber;
   listProvisionalHolders = tagHoldersRepo.listProvisionalHolders;
   updateHolder = tagHoldersRepo.updateHolder;
+
+  const { db } = dbClientMod;
+  const { tagHolders } = schemaMod;
+  const { eq } = drizzleOrmMod;
+  setCurrentTagNumber = (id, currentTagNumber) => {
+    db.update(tagHolders).set({ currentTagNumber }).where(eq(tagHolders.id, id)).run();
+  };
 
   applyMigrations();
   seed();
@@ -159,5 +175,105 @@ describe("tagHolders repository: nullable tagNumber + confirmed (sub-plan 01)", 
     expect(provisionalIds).not.toContain(confirmedId);
     expect(provisionalIds).not.toContain(deactivatedProvisionalId);
     expect(provisional.every((h) => h.confirmed === false && h.active === true)).toBe(true);
+  });
+});
+
+describe("tagHolders: currentTagNumber is a nullable, per-season-unique derived cache (tag-reassignment sub-plan 01)", () => {
+  it("is null by default and `tagNumber` (the initial tag) is unaffected", () => {
+    const id = insertHolder({
+      seasonYear: SEASON_YEAR,
+      name: "Current Tag Default",
+      tagNumber: 950,
+      pool: "A",
+      entryDate: "2026-06-10T00:00:00.000Z",
+    });
+
+    const row = getHolder(id);
+    expect(row?.currentTagNumber).toBeNull();
+    expect(row?.tagNumber).toBe(950);
+  });
+
+  it("can be set independently of the initial tagNumber (they diverge after a reassignment)", () => {
+    const id = insertHolder({
+      seasonYear: SEASON_YEAR,
+      name: "Current Tag Diverges",
+      tagNumber: 951,
+      pool: "A",
+      entryDate: "2026-06-10T00:00:00.000Z",
+    });
+
+    setCurrentTagNumber(id, 3);
+
+    const row = getHolder(id);
+    // `tagNumber` (initial) never changes as tags churn night to night.
+    expect(row?.tagNumber).toBe(951);
+    expect(row?.currentTagNumber).toBe(3);
+  });
+
+  it("two holders with a null currentTagNumber coexist without a unique-index violation", () => {
+    const firstId = insertHolder({
+      seasonYear: SEASON_YEAR,
+      name: "Current Tag Null One",
+      tagNumber: 952,
+      pool: "A",
+      entryDate: "2026-06-10T00:00:00.000Z",
+    });
+    const secondId = insertHolder({
+      seasonYear: SEASON_YEAR,
+      name: "Current Tag Null Two",
+      tagNumber: 953,
+      pool: "B",
+      entryDate: "2026-06-10T00:00:00.000Z",
+    });
+
+    expect(getHolder(firstId)?.currentTagNumber).toBeNull();
+    expect(getHolder(secondId)?.currentTagNumber).toBeNull();
+  });
+
+  it("rejects a duplicate non-null currentTagNumber within the same season", () => {
+    const firstId = insertHolder({
+      seasonYear: SEASON_YEAR,
+      name: "Current Tag Dup One",
+      tagNumber: 954,
+      pool: "A",
+      entryDate: "2026-06-10T00:00:00.000Z",
+    });
+    const secondId = insertHolder({
+      seasonYear: SEASON_YEAR,
+      name: "Current Tag Dup Two",
+      tagNumber: 955,
+      pool: "A",
+      entryDate: "2026-06-10T00:00:00.000Z",
+    });
+
+    setCurrentTagNumber(firstId, 12);
+    expect(() => setCurrentTagNumber(secondId, 12)).toThrow();
+  });
+
+  it("current tags are free to permute — reassigning holder A's old current tag to holder B is not a collision once A moves off it", () => {
+    const holderAId = insertHolder({
+      seasonYear: SEASON_YEAR,
+      name: "Current Tag Permute A",
+      tagNumber: 956,
+      pool: "A",
+      entryDate: "2026-06-10T00:00:00.000Z",
+    });
+    const holderBId = insertHolder({
+      seasonYear: SEASON_YEAR,
+      name: "Current Tag Permute B",
+      tagNumber: 957,
+      pool: "A",
+      entryDate: "2026-06-10T00:00:00.000Z",
+    });
+
+    setCurrentTagNumber(holderAId, 20);
+    setCurrentTagNumber(holderBId, 21);
+
+    // Night's reassignment: A moves off 20 first, then B can take it.
+    setCurrentTagNumber(holderAId, 21 + 1000); // move A off 20 to an unused number
+    setCurrentTagNumber(holderBId, 20);
+
+    expect(getHolder(holderAId)?.currentTagNumber).toBe(1021);
+    expect(getHolder(holderBId)?.currentTagNumber).toBe(20);
   });
 });

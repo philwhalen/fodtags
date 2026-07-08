@@ -19,6 +19,7 @@ export async function AdminNav() {
     { href: "/admin/matches", label: "Matches", badge: pendingCount },
     { href: "/admin/events", label: "Event sources" },
     { href: "/admin/entry-counts", label: "Entry counts" },
+    { href: "/admin/tags", label: "Tags" },
     { href: "/admin/financials", label: "Financials" },
     { href: "/admin/adjustments", label: "Adjustments" },
     { href: "/admin/audit", label: "Audit" },

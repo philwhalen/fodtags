@@ -28,6 +28,7 @@ import { tagSortKey } from "@/lib";
 
 import { entriesToOlpPot, largestRemainderPayout, olpScore } from "./olp";
 import { computeFinancials } from "./financial";
+import { computeTagTimeline } from "./tags";
 
 const SUB_LEAGUE_TYPES: SubLeagueType[] = ["EARLY", "MID", "LATE"];
 const POOLS: Pool[] = ["A", "B"];
@@ -62,12 +63,7 @@ function isSubLeagueType(x: string): x is SubLeagueType {
 }
 
 /** Holder's pool in effect on `date` — base pool plus any switch whose
- * `effectiveDate` is on or before `date` (Spec 02 §2.2). Tag numbers are
- * modeled as a single static field per holder (no reassignment history),
- * so unlike pool/rating there is no "as of" resolution needed for them
- * anywhere in this module — every tie-break below just reads
- * `holder.tagNumber` directly (via `tagSortKey`, which sorts a provisional
- * holder's null tag last — Spec 02 §2.6). */
+ * `effectiveDate` is on or before `date` (Spec 02 §2.2). */
 function poolAsOf(
   holder: SeasonSnapshotHolder,
   switches: SeasonSnapshotPoolSwitch[],
@@ -238,6 +234,17 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
   const holderById = new Map(snapshot.holders.map((h) => [h.id, h]));
   const seasonEndDate = resolveSeasonEndDate(snapshot);
 
+  // Tag reassignment timeline (Spec 02 §2.10) — must run before any
+  // ranking below, since a League Night's finish tie-break needs THAT
+  // night's tag-in and every other tie-break (Podium/Overall/Tournament/
+  // OLP, Spec 02 §2.6) needs the tag as-of a given date.
+  const { assignments: tagAssignments, tagAsOf, currentTagByHolder, tagInForNight } =
+    computeTagTimeline({
+      holders: snapshot.holders,
+      events: snapshot.events,
+      tagOverrides: snapshot.tagOverrides,
+    });
+
   // Per-holder forfeiture cutoff: the latest pool-switch effective date,
   // if any — all points earned strictly before it are forfeited (Spec 02
   // §2.2). With multiple switches only the most recent cutoff matters,
@@ -297,9 +304,17 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
       // date; on-date finishes count.
       if (datePart(event.eventDate) < datePart(holder.entryDate)) continue;
       const pool = poolAsOf(holder, snapshot.poolSwitches, event.eventDate);
+      // League Night ranking is tie-broken by the tag held going INTO that
+      // night (Spec 02 §2.6); Tournament/FODOpen results use the tag as of
+      // the event date instead, since those events don't participate in
+      // the nightly reassignment.
+      const tagNumber =
+        event.type === "LeagueNight"
+          ? tagInForNight(holder.id, event.id)
+          : tagAsOf(holder.id, event.eventDate);
       eligibleByPool[pool].push({
         holderId: holder.id,
-        tagNumber: holder.tagNumber,
+        tagNumber,
         rawScoreToPar: result.rawScoreToPar,
       });
     }
@@ -415,7 +430,8 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
       if (items.length === 0) continue;
       const totalPoints = items.reduce((acc, i) => acc + i.points, 0);
       const pool = poolAsOf(holder, snapshot.poolSwitches, asOf);
-      participants.push({ holderId: holder.id, tagNumber: holder.tagNumber, pool, totalPoints });
+      const tagNumber = tagAsOf(holder.id, asOf);
+      participants.push({ holderId: holder.id, tagNumber, pool, totalPoints });
     }
 
     const podiumStanding: PodiumStanding = { complete: subLeague.complete, A: [], B: [] };
@@ -485,7 +501,7 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
       .filter((h) => poolAsOf(h, snapshot.poolSwitches, seasonEndDate) === pool)
       .map((h) => ({
         holderId: h.id,
-        tagNumber: h.tagNumber,
+        tagNumber: currentTagByHolder.get(h.id) ?? null,
         pool,
         totalPoints: scoreSheet[h.id]?.total ?? 0,
       }));
@@ -544,7 +560,7 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
       });
       candidates.push({
         holderId: holder.id,
-        tagNumber: holder.tagNumber,
+        tagNumber: tagAsOf(holder.id, asOf),
         score,
         ratingComponent,
         avgToPar,
@@ -629,6 +645,9 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
     subLeagueComplete,
   });
 
+  const currentTagByHolderRecord: Record<number, number | null> = {};
+  for (const [holderId, tag] of currentTagByHolder) currentTagByHolderRecord[holderId] = tag;
+
   return {
     seasonYear: snapshot.seasonYear,
     championship,
@@ -639,5 +658,7 @@ export function computeSeason(snapshot: SeasonSnapshot): SeasonResults {
     olp,
     skins,
     financials,
+    tagAssignments,
+    currentTagByHolder: currentTagByHolderRecord,
   };
 }

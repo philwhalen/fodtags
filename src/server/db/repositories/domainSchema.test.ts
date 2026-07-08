@@ -55,6 +55,7 @@ let insertAdjustment: typeof import("@server/db/repositories/financialAdjustment
 let deleteAdjustment: typeof import("@server/db/repositories/financialAdjustments").deleteAdjustment;
 let recordAudit: typeof import("@server/db/repositories/auditLog").recordAudit;
 let listAudit: typeof import("@server/db/repositories/auditLog").listAudit;
+let upsertOverride: typeof import("@server/db/repositories/tagOverrides").upsertOverride;
 let loadSeasonSnapshot: typeof import("@server/db/repositories/seasonSnapshot").loadSeasonSnapshot;
 let computeSeason: typeof import("@server/engine/season").computeSeason;
 let insertSeasonRow: (year: number) => void;
@@ -84,6 +85,7 @@ beforeAll(async () => {
     expensesRepo,
     financialAdjustmentsRepo,
     auditLogRepo,
+    tagOverridesRepo,
     seasonSnapshotRepo,
     engineMod,
     dbClientMod,
@@ -104,6 +106,7 @@ beforeAll(async () => {
     import("@server/db/repositories/expenses"),
     import("@server/db/repositories/financialAdjustments"),
     import("@server/db/repositories/auditLog"),
+    import("@server/db/repositories/tagOverrides"),
     import("@server/db/repositories/seasonSnapshot"),
     import("@server/engine/season"),
     import("@server/db/client"),
@@ -147,6 +150,7 @@ beforeAll(async () => {
   deleteAdjustment = financialAdjustmentsRepo.deleteAdjustment;
   recordAudit = auditLogRepo.recordAudit;
   listAudit = auditLogRepo.listAudit;
+  upsertOverride = tagOverridesRepo.upsertOverride;
   loadSeasonSnapshot = seasonSnapshotRepo.loadSeasonSnapshot;
   computeSeason = engineMod.computeSeason;
   const { db } = dbClientMod;
@@ -587,6 +591,56 @@ describe("domain schema repositories: insert -> season-scoped read round-trip", 
         ["EARLY", "MID", "LATE"].includes(night.subLeagueType),
       ),
     ).toBe(true);
+
+    // No overrides recorded yet in this shared season — the field exists
+    // and is an empty array, not undefined.
+    expect(snapshot.tagOverrides).toEqual([]);
+  });
+
+  it("loadSeasonSnapshot loads tag_overrides into snapshot.tagOverrides, and holder.tagNumber stays the initial (admin-set) tag (tag-reassignment sub-plan 01)", () => {
+    const holderId = insertHolder({
+      seasonYear: SEASON_YEAR,
+      name: "Tag Override Snapshot Test",
+      tagNumber: 993,
+      pool: "A",
+      entryDate: "2026-03-01T00:00:00.000Z",
+    });
+
+    // `event_sources` has a unique (seasonYear, type) index, and the seed
+    // fixture already occupies MID — reuse it with a fresh `roundOrdinal`
+    // rather than inserting a second MID source.
+    const midSource = listSources(SEASON_YEAR).find((s) => s.type === "MID");
+    expect(midSource).toBeDefined();
+    const eventId = insertEvent({
+      seasonYear: SEASON_YEAR,
+      eventSourceId: midSource!.id,
+      type: "LeagueNight",
+      label: "Test Tag Override Night",
+      eventDate: "2026-07-01",
+      roundOrdinal: 50,
+    });
+
+    upsertOverride({
+      seasonYear: SEASON_YEAR,
+      eventId,
+      holderId,
+      tagOut: 6,
+      decidedBy: "director@example.com",
+    });
+
+    const snapshot = loadSeasonSnapshot(SEASON_YEAR);
+
+    const override = snapshot.tagOverrides.find(
+      (o) => o.eventId === eventId && o.holderId === holderId,
+    );
+    expect(override).toEqual({ eventId, holderId, tagOut: 6 });
+
+    // The override affects nothing about the holder's admin-set initial
+    // tag — that's still what `tagNumber` reports (Spec 02 §2.10
+    // architecture decision 1); the engine's tag timeline pre-pass
+    // (sub-plan 02) is what resolves the reassignment from here.
+    const holder = snapshot.holders.find((h) => h.id === holderId);
+    expect(holder?.tagNumber).toBe(993);
   });
 });
 

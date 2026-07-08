@@ -42,6 +42,9 @@ let confirmHolder: (
   input: { id: number; pool: "A" | "B"; tagNumber?: number | null },
   actorEmail: string | null,
 ) => Promise<{ publishedVersion: number; warning?: string }>;
+let getHolder: (id: number) => { tagNumber: number | null; currentTagNumber: number | null } | undefined;
+let loadSeasonSnapshot: (seasonYear: number) => import("@/lib").SeasonSnapshot;
+let computeSeason: (snapshot: import("@/lib").SeasonSnapshot) => import("@/lib").SeasonResults;
 
 beforeAll(async () => {
   tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "fodtags-pending-surfacing-"));
@@ -55,6 +58,9 @@ beforeAll(async () => {
     eventSourcesRepo,
     readModelRepo,
     adminMutations,
+    tagHoldersRepo,
+    seasonSnapshotRepo,
+    engine,
   ] = await Promise.all([
     import("@server/db/migrate"),
     import("@server/db/seed"),
@@ -62,6 +68,9 @@ beforeAll(async () => {
     import("@server/db/repositories/eventSources"),
     import("@server/db/repositories/readModel"),
     import("@server/admin/mutations"),
+    import("@server/db/repositories/tagHolders"),
+    import("@server/db/repositories/seasonSnapshot"),
+    import("@server/engine"),
   ]);
 
   runRefresh = pipeline.runRefresh;
@@ -70,6 +79,9 @@ beforeAll(async () => {
   updateSource = eventSourcesRepo.updateSource;
   getPublished = readModelRepo.getPublished;
   confirmHolder = adminMutations.confirmHolder;
+  getHolder = tagHoldersRepo.getHolder;
+  loadSeasonSnapshot = seasonSnapshotRepo.loadSeasonSnapshot;
+  computeSeason = engine.computeSeason;
 
   applyMigrations();
   seed();
@@ -134,6 +146,27 @@ describe("public pending-confirmation surfacing (sub-plan 06)", () => {
     );
     expect(result.publishedVersion).toBeGreaterThan(0);
 
+    // The admin-assigned number lands as the holder's INITIAL (stable) tag
+    // — the roster/slug seed (Spec 02 §2.10 architecture decision 1).
+    const holderRow = getHolder(diefesRow!.holderId);
+    expect(holderRow?.tagNumber).toBe(CONFIRMED_TAG_NUMBER);
+
+    // But the PUBLISHED (current) tag is the engine's tag timeline output,
+    // which can legitimately differ from the just-assigned initial tag:
+    // Diefes already had League Night results before confirmation
+    // (provisional holders score immediately), so once their initial tag
+    // seeds the timeline, the full-season recompute retroactively folds
+    // them into the combined-field reassignment pile on every night they
+    // already played (Spec 02 §2.10 "the engine treats it as the seed of
+    // the timeline" — tag-reassignment sub-plan 04 is the first read-model
+    // consumer to surface this). Cross-check against the engine's own
+    // `currentTagByHolder` rather than hardcoding a number here, so this
+    // assertion doesn't silently drift out of sync with the engine.
+    const expectedCurrentTag = computeSeason(loadSeasonSnapshot(SEASON_YEAR)).currentTagByHolder[
+      diefesRow!.holderId
+    ];
+    expect(expectedCurrentTag).not.toBeNull();
+
     const indexPublishedAfter = getPublished(SEASON_YEAR, "players");
     const indexPayloadAfter = indexPublishedAfter!.payload as PublicPlayersIndexPayload;
     const diefesRowAfter = indexPayloadAfter.holders.find(
@@ -141,13 +174,13 @@ describe("public pending-confirmation surfacing (sub-plan 06)", () => {
     );
     expect(diefesRowAfter).toBeDefined();
     expect(diefesRowAfter!.provisional).toBe(false);
-    expect(diefesRowAfter!.tagNumber).toBe(CONFIRMED_TAG_NUMBER);
+    expect(diefesRowAfter!.tagNumber).toBe(expectedCurrentTag);
     expect(indexPayloadAfter.pendingReview).toBe(pendingBefore - 1);
 
     const profilePublishedAfter = getPublished(SEASON_YEAR, `players/${diefesRowAfter!.slug}`);
     expect(profilePublishedAfter).toBeDefined();
     const profilePayloadAfter = profilePublishedAfter!.payload as PublicProfilePayload;
     expect(profilePayloadAfter.provisional).toBe(false);
-    expect(profilePayloadAfter.tagNumber).toBe(CONFIRMED_TAG_NUMBER);
+    expect(profilePayloadAfter.tagNumber).toBe(expectedCurrentTag);
   });
 });

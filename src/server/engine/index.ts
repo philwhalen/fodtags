@@ -21,7 +21,9 @@ export { olpScore } from "@server/engine/olp";
 export { computeFinancials } from "@server/engine/financial";
 export { computeStandings } from "@server/engine/standings";
 export { computeSeason } from "@server/engine/season";
+export { computeTagTimeline } from "@server/engine/tags";
 export type { StandingsHolder, StandingsInput, StandingsOutput } from "@server/engine/standings";
+export type { TagTimelineInput, TagTimelineResult } from "@server/engine/tags";
 export type {
   Pool,
   StandingRow,
@@ -31,4 +33,5 @@ export type {
   SeasonFinancials,
   FundBalancesCents,
   LedgerEntry,
+  TagAssignmentRow,
 } from "@/lib";

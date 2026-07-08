@@ -41,6 +41,7 @@ function baseSnapshot(overrides: Partial<SeasonSnapshot> = {}): SeasonSnapshot {
     seasonYear: SEASON_YEAR,
     holders: [],
     poolSwitches: [],
+    tagOverrides: [],
     ratings: [],
     subLeagues: [
       { type: "EARLY", startDate: "2026-05-01", endDate: "2026-06-01", complete: false },
@@ -850,5 +851,99 @@ describe("computeSeason — financials (Stage H, Spec 09)", () => {
     expect(withoutFinancial.financials.totalCashCents).toBe(0);
     expect(withoutFinancial.financials.ledger).toEqual([]);
     expect(withoutFinancial.financials.totals.paidEntries).toBe(0);
+  });
+});
+
+describe("computeSeason — tag reassignment timeline integration (Spec 02 §2.10/§2.6)", () => {
+  it("publishes tagAssignments and currentTagByHolder for a small multi-night fixture", () => {
+    const holders = [
+      holder({ id: 1, tagNumber: 1 }),
+      holder({ id: 2, tagNumber: 2 }),
+    ];
+    const snapshot = baseSnapshot({
+      holders,
+      events: [
+        leagueNight({
+          id: 1,
+          eventDate: "2026-05-01",
+          results: [
+            { holderId: 1, rawScoreToPar: -10, roundRating: null, tagPresent: true },
+            { holderId: 2, rawScoreToPar: -5, roundRating: null, tagPresent: true },
+          ],
+        }),
+        leagueNight({
+          id: 2,
+          eventDate: "2026-05-08",
+          roundOrdinal: 2,
+          results: [
+            { holderId: 1, rawScoreToPar: -5, roundRating: null, tagPresent: true },
+            { holderId: 2, rawScoreToPar: -10, roundRating: null, tagPresent: true },
+          ],
+        }),
+      ],
+    });
+
+    const result = computeSeason(snapshot);
+
+    // 2 nights x 2 holders = 4 assignment rows, all computed (no overrides).
+    expect(result.tagAssignments).toHaveLength(4);
+    expect(result.tagAssignments.every((a) => a.source === "computed")).toBe(true);
+
+    // Night 1: holder 1 wins outright, keeps tag 1; holder 2 keeps tag 2
+    // (finish order already matches tag order — no swap).
+    // Night 2: holder 2 wins outright, so the combined-field reassignment
+    // now hands holder 2 the lower tag (1) and holder 1 tag 2.
+    expect(result.currentTagByHolder[1]).toBe(2);
+    expect(result.currentTagByHolder[2]).toBe(1);
+
+    const night2Holder2 = result.tagAssignments.find((a) => a.eventId === 2 && a.holderId === 2)!;
+    expect(night2Holder2.tagIn).toBe(2);
+    expect(night2Holder2.tagOut).toBe(1);
+  });
+
+  it("breaks a League-Night tie by the tag-in from a prior night's reshuffle, not the static roster tag", () => {
+    // Night 1: holder 2 (initial tag 2) beats holder 1 (initial tag 1)
+    // outright, so the reassignment swaps their tags: holder 1 -> tag 2,
+    // holder 2 -> tag 1.
+    const holders = [
+      holder({ id: 1, tagNumber: 1 }),
+      holder({ id: 2, tagNumber: 2 }),
+    ];
+    const snapshot = baseSnapshot({
+      holders,
+      events: [
+        leagueNight({
+          id: 1,
+          eventDate: "2026-05-01",
+          results: [
+            { holderId: 1, rawScoreToPar: -5, roundRating: null, tagPresent: true },
+            { holderId: 2, rawScoreToPar: -10, roundRating: null, tagPresent: true },
+          ],
+        }),
+        // Night 2: tied score. Under the OLD static-tag tie-break, holder
+        // 1 (roster tag 1) would win. Under the correct as-of tag-in
+        // tie-break, holder 2 (now holding tag 1 after night 1) wins.
+        leagueNight({
+          id: 2,
+          eventDate: "2026-05-08",
+          roundOrdinal: 2,
+          results: [
+            { holderId: 1, rawScoreToPar: -3, roundRating: null, tagPresent: true },
+            { holderId: 2, rawScoreToPar: -3, roundRating: null, tagPresent: true },
+          ],
+        }),
+      ],
+    });
+
+    const result = computeSeason(snapshot);
+    const items1 = result.scoreSheet[1]!.countedLineItems.find((i) => i.eventId === 2)!;
+    const items2 = result.scoreSheet[2]!.countedLineItems.find((i) => i.eventId === 2)!;
+
+    expect(items2.rank).toBe(1);
+    expect(items2.points).toBe(100);
+    expect(items2.tieBrokenByTag).toBe(true);
+    expect(items1.rank).toBe(2);
+    expect(items1.points).toBe(60);
+    expect(items1.tieBrokenByTag).toBe(true);
   });
 });

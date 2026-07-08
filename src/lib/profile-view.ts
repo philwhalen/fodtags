@@ -9,9 +9,12 @@ import { filterHolderRounds, roundTrendSeries } from "./rounds-projection";
 import type { RoundRow, RoundsFilter } from "./rounds-types";
 
 /** One row on the `/players` roster index (Spec 08 §8.3). `tagNumber` is
- * null and `provisional` is true for an auto-added holder still awaiting
- * director confirmation (Spec 03 §3.5/§3.6) — the roster row renders a
- * "Pending confirmation" badge and "—" for the tag. */
+ * the holder's CURRENT tag — their latest nightly tag-out (Spec 02 §2.10),
+ * not the stable initial tag that drives slug generation
+ * (`src/lib/holder-slug.ts`). Null and `provisional` is true for an
+ * auto-added holder still awaiting director confirmation (Spec 03
+ * §3.5/§3.6) — the roster row renders a "Pending confirmation" badge and
+ * "—" for the tag. */
 export interface PlayersIndexRow {
   holderId: number;
   name: string;
@@ -105,7 +108,8 @@ export interface ProfileMoneyOlp {
   projected: boolean;
 }
 
-/** Published payload for one `players/{slug}` view. `tagNumber` is null and
+/** Published payload for one `players/{slug}` view. `tagNumber` is the
+ * holder's CURRENT tag (Spec 08 §8.1; Spec 02 §2.10) — null and
  * `provisional` is true for an auto-added holder awaiting director
  * confirmation (Spec 03 §3.5/§3.6). */
 export interface PublicProfilePayload {
@@ -185,6 +189,10 @@ export interface ProfileView {
      * (Spec 03 §3.5/§3.6) — the header renders a "Pending confirmation"
      * text badge among the eligibility flags (Spec 08 §8.1). */
     provisional: boolean;
+    /** Link target for the "night-by-night tag movement" caption next to
+     * the header's current tag (Spec 08 §8.1) — same href as the Rounds
+     * section's "View full rounds" link, scoped to the active sub-league. */
+    roundsHref: string;
   };
   championship: {
     overall: ProfileStandingSnapshot;
@@ -349,6 +357,7 @@ export function projectProfile(
       skinsQualified: payload.skinsQualified,
       skinsIneligibilityReason: payload.skinsIneligibilityReason,
       provisional: payload.provisional,
+      roundsHref: links.rounds,
     },
     championship: {
       overall: payload.championship,

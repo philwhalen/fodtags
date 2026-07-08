@@ -50,13 +50,14 @@ Header (shown prominently above the table):
 
 Round rows (one per league round, **newest first**):
 
-| Date | Sub-league | Event / Round | Score (to par) | Round rating |
+| Date | Sub-league | Event / Round | Score (to par) | Round rating | Tag |
 
 - **Date** — the event's ET calendar date.
 - **Sub-league** — Early / Mid / Late for League Nights; for Tournament / FOD Open rounds this cell reads the event type (those events belong to no sub-league — §5.4).
 - **Event / Round** — e.g. "Early · League Night 6", "FOD Open · R2".
 - **Score (to par)** — the round's raw score to par as reported by PDGA.
 - **Round rating** — the per-round rating; **"pending"** when the round is ingested but PDGA has not yet rated it (never blank/zero — §5.5).
+- **Tag** — for a **League Night**, the tag the holder held that night as **tag-in → tag-out** (the nightly reassignment, [Spec 02 §2.10](./02-Domain-Model-and-Scoring.md#210-tag-numbers--nightly-reassignment)); shown as a single value when unchanged, and **"—"** for a holder who held no tag yet. Tournament / FOD Open rows (no reassignment) show the holder's tag as of that date. This column is the per-day tag→holder record readable from the public side.
 
 Only rounds whose event is **not canceled** appear ([Spec 02 §2.7](./02-Domain-Model-and-Scoring.md)); a canceled event's rounds are omitted, consistent with their zero-everywhere treatment.
 

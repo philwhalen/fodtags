@@ -23,7 +23,7 @@ function divisionsString(divisions: unknown): string {
   return Array.isArray(divisions) ? divisions.join(", ") : "";
 }
 
-export function RegisterSourceForm() {
+export function RegisterSourceForm({ defaultType }: { defaultType: string }) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
 
@@ -42,7 +42,7 @@ export function RegisterSourceForm() {
     <form action={handleSubmit} className="admin-form">
       <label className="admin-field">
         Type
-        <select name="type" defaultValue="TOURNAMENT" className="admin-select">
+        <select name="type" defaultValue={defaultType} className="admin-select">
           <option value="EARLY">EARLY</option>
           <option value="MID">MID</option>
           <option value="LATE">LATE</option>

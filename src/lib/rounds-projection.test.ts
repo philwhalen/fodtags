@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   filterHolderRounds,
   filterRosterByName,
+  roundTagCell,
   roundTrendSeries,
   summarizeRoster,
 } from "./rounds-projection";
@@ -18,6 +19,8 @@ function round(overrides: Partial<RoundRow> & Pick<RoundRow, "eventId">): RoundR
     roundOrdinal: 1,
     scoreToPar: 2,
     roundRating: 980,
+    tagIn: 5,
+    tagOut: 5,
     ...overrides,
   };
 }
@@ -153,6 +156,52 @@ describe("summarizeRoster", () => {
     const alice = result.find((r) => r.holderId === 1);
     expect(alice?.roundCount).toBe(2);
     expect(alice?.trend).toEqual([]);
+  });
+});
+
+describe("roundTagCell", () => {
+  it("renders a League Night reassignment as tag-in → tag-out with a non-glyph aria-label", () => {
+    const cell = roundTagCell(round({ eventId: 1, type: "LeagueNight", tagIn: 1, tagOut: 5 }));
+    expect(cell).toEqual({ text: "1 → 5", ariaLabel: "tag 1 to 5" });
+  });
+
+  it("collapses a League Night to a single value when the tag is unchanged", () => {
+    const cell = roundTagCell(round({ eventId: 1, type: "LeagueNight", tagIn: 5, tagOut: 5 }));
+    expect(cell).toEqual({ text: "5", ariaLabel: "tag 5" });
+  });
+
+  it('renders "—" for a League Night where the holder held no tag yet', () => {
+    const cell = roundTagCell(
+      round({ eventId: 1, type: "LeagueNight", tagIn: null, tagOut: null }),
+    );
+    expect(cell).toEqual({ text: "—", ariaLabel: "no tag yet" });
+  });
+
+  it("renders the single tag-out for a Tournament row (no reassignment)", () => {
+    const cell = roundTagCell(
+      round({ eventId: 1, type: "Tournament", subLeague: null, tagIn: 7, tagOut: 7 }),
+    );
+    expect(cell).toEqual({ text: "7", ariaLabel: "tag 7" });
+  });
+
+  it('renders "—" for a Tournament row when the holder held no tag yet', () => {
+    const cell = roundTagCell(
+      round({
+        eventId: 1,
+        type: "Tournament",
+        subLeague: null,
+        tagIn: null,
+        tagOut: null,
+      }),
+    );
+    expect(cell).toEqual({ text: "—", ariaLabel: "no tag yet" });
+  });
+
+  it("renders the single tag-out for a FOD Open row (no reassignment)", () => {
+    const cell = roundTagCell(
+      round({ eventId: 1, type: "FODOpen", subLeague: null, tagIn: 3, tagOut: 3 }),
+    );
+    expect(cell).toEqual({ text: "3", ariaLabel: "tag 3" });
   });
 });
 

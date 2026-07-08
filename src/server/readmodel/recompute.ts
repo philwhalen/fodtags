@@ -31,8 +31,8 @@ export function recompute(seasonYear: number): Promise<number> {
   }
 
   const run = Promise.resolve().then(() => {
-    const views = buildViews(seasonYear);
-    return publish(seasonYear, views);
+    const { views, currentTags } = buildViews(seasonYear);
+    return publish(seasonYear, views, currentTags);
   });
 
   inFlight = run;

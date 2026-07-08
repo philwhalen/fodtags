@@ -1,5 +1,5 @@
 import { filterRowsByName } from "./filter-rows";
-import { tagSortKey } from "./tag-number";
+import { formatTagNumber, tagSortKey } from "./tag-number";
 import type { SubLeagueSlug } from "./public-routes";
 import type { EventType, SubLeagueType } from "./season-snapshot";
 import type {
@@ -9,6 +9,41 @@ import type {
   RoundsHolderEntry,
   RoundTypeCode,
 } from "./rounds-types";
+
+/** Display form of a round's Tag column (Spec 05 §5.3): `text` is the
+ * compact visual form (`"1 → 5"`, a single value, or "—"); `ariaLabel` is
+ * a screen-reader-sensible phrase so the "→" glyph is never the sole
+ * carrier of meaning (Spec 11 §11.2). League Night rows show the nightly
+ * reassignment (tag-in → tag-out, collapsed to a single value when
+ * unchanged); Tournament/FOD Open rows (no reassignment) show the
+ * holder's tag as of that date. */
+export interface RoundTagCell {
+  text: string;
+  ariaLabel: string;
+}
+
+export function roundTagCell(round: RoundRow): RoundTagCell {
+  if (round.type !== "LeagueNight") {
+    const tag = round.tagOut;
+    return tag === null
+      ? { text: "—", ariaLabel: "no tag yet" }
+      : { text: formatTagNumber(tag), ariaLabel: `tag ${tag}` };
+  }
+
+  const { tagIn, tagOut } = round;
+  if (tagIn === tagOut) {
+    return tagIn === null
+      ? { text: "—", ariaLabel: "no tag yet" }
+      : { text: formatTagNumber(tagIn), ariaLabel: `tag ${tagIn}` };
+  }
+
+  const inText = formatTagNumber(tagIn);
+  const outText = formatTagNumber(tagOut);
+  return {
+    text: `${inText} → ${outText}`,
+    ariaLabel: `tag ${inText} to ${outText}`,
+  };
+}
 
 function subLeagueSlugToType(slug: SubLeagueSlug): SubLeagueType {
   switch (slug) {

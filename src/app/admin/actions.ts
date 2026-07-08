@@ -32,6 +32,7 @@ import {
   setAceCount,
   setEntryCount,
   setEventSourceStale,
+  setTagNightOverrides,
   setTagNotPresent,
   updateEventSource,
   updateHolderRecord,
@@ -191,6 +192,32 @@ export async function tagNotPresentAction(formData: FormData): Promise<MutationR
     throw new AdminError("Invalid result id.");
   }
   return setTagNotPresent(resultId, false, actorEmail);
+}
+
+/** Parses the per-holder `tagOut-<holderId>` fields the tag-night override
+ * form submits (Spec 10 §10.9) — one input per pile participant, field
+ * count driven by that night's roster rather than a fixed schema. */
+export async function setTagNightOverridesAction(formData: FormData): Promise<MutationResult> {
+  const actorEmail = await requireDirectorEmail();
+  const eventId = Number.parseInt(String(formData.get("eventId") ?? ""), 10);
+  if (!Number.isFinite(eventId)) {
+    throw new AdminError("Invalid event id.");
+  }
+
+  const tagOuts: Record<number, number> = {};
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith("tagOut-")) {
+      continue;
+    }
+    const holderId = Number.parseInt(key.slice("tagOut-".length), 10);
+    const tagOut = Number.parseInt(String(value), 10);
+    if (!Number.isFinite(holderId) || !Number.isFinite(tagOut)) {
+      throw new AdminError("Invalid tag-out value.");
+    }
+    tagOuts[holderId] = tagOut;
+  }
+
+  return setTagNightOverrides({ eventId, tagOuts }, actorEmail);
 }
 
 export async function linkEntrantAction(formData: FormData): Promise<MutationResult> {

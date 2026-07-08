@@ -29,7 +29,7 @@ const SEASON_YEAR = 2097;
 const EMPTY_SEASON_YEAR = 2098;
 
 let tempDir: string;
-let buildViews: (seasonYear: number) => ViewRow[];
+let buildViews: (seasonYear: number) => { views: ViewRow[] };
 let buildAndPublish: (seasonYear: number) => number;
 let getPublished: (
   seasonYear: number,
@@ -381,7 +381,7 @@ describe("financials build (plans/financials/02-readmodel-build.md)", () => {
   });
 
   it("includes the financials view in buildViews output", () => {
-    const views = buildViews(SEASON_YEAR);
+    const { views } = buildViews(SEASON_YEAR);
     const financials = views.find((v) => v.viewKey === "financials");
     expect(financials).toBeDefined();
   });

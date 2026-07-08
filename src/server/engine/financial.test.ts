@@ -145,6 +145,7 @@ describe("computeFinancials — OLP cross-check", () => {
       seasonYear: SEASON_YEAR,
       holders: [],
       poolSwitches: [],
+      tagOverrides: [],
       ratings: [],
       subLeagues: [
         { type: "EARLY", startDate: "2026-05-01", endDate: "2026-06-01", complete: false },
