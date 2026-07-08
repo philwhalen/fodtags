@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { ADMIN_LOGIN_HREF, ADMIN_PANEL_HREF, authControlModel } from "./auth-control";
+import {
+  ADMIN_LOGIN_HREF,
+  ADMIN_PANEL_HREF,
+  RETURN_TO_MAIN_HREF,
+  authControlModel,
+} from "./auth-control";
 
 describe("authControlModel", () => {
   it("signed out (no session) → Admin login pointing at the sign-in page", () => {
@@ -16,7 +21,7 @@ describe("authControlModel", () => {
     expect(authControlModel(undefined).mode).toBe("signed-out");
   });
 
-  it("director session → Admin panel + Logout", () => {
+  it("director session (public surface, default) → Admin panel + Logout", () => {
     const model = authControlModel({ user: { isDirector: true } });
     expect(model.mode).toBe("director");
     if (model.mode === "director") {
@@ -25,6 +30,22 @@ describe("authControlModel", () => {
       expect(model.panelHref).toBe("/admin");
       expect(model.logoutLabel).toBe("Logout");
     }
+  });
+
+  it("director session, admin surface → Return to main view (→ /) + Logout", () => {
+    const model = authControlModel({ user: { isDirector: true } }, "admin");
+    expect(model.mode).toBe("director");
+    if (model.mode === "director") {
+      expect(model.panelLabel).toBe("Return to main view");
+      expect(model.panelHref).toBe(RETURN_TO_MAIN_HREF);
+      expect(model.panelHref).toBe("/");
+      expect(model.logoutLabel).toBe("Logout");
+    }
+  });
+
+  it("surface does not affect signed-out state", () => {
+    expect(authControlModel(null, "admin").mode).toBe("signed-out");
+    expect(authControlModel(null, "public").mode).toBe("signed-out");
   });
 
   it("session without the director flag never shows admin UI (defensive)", () => {

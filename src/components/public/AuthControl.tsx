@@ -2,7 +2,7 @@ import type { Route } from "next";
 import Link from "next/link";
 
 import { auth, signOut } from "@server/auth";
-import { authControlModel } from "@/lib/auth-control";
+import { authControlModel, type AuthControlSurface } from "@/lib/auth-control";
 
 /**
  * Header auth control (Spec 10 §10.1.1; Spec 11 §11.1).
@@ -13,12 +13,20 @@ import { authControlModel } from "@/lib/auth-control";
  * to the built-in Auth.js sign-in page, and "Logout" is an inline server action
  * (the same `signOut({ redirectTo: "/" })` pattern the admin dashboard uses).
  *
+ * `surface` selects the director's navigation affordance (Spec 10 §10.1.1):
+ * `"public"` (default) shows "Admin panel" → `/admin`; `"admin"` shows "Return
+ * to main view" → `/`. The admin shell passes `surface="admin"`.
+ *
  * This is affordance only — `src/middleware.ts` remains the real gate on
  * `/admin/*`; the button just exposes the entry point and reflects session
  * state.
  */
-export async function AuthControl() {
-  const model = authControlModel(await auth());
+export async function AuthControl({
+  surface = "public",
+}: {
+  surface?: AuthControlSurface;
+} = {}) {
+  const model = authControlModel(await auth(), surface);
 
   if (model.mode === "director") {
     return (

@@ -13,8 +13,10 @@ import "./admin.css";
  * Wraps every `/admin/*` page with the same header auth control the public site
  * uses, so sign-in state and the logout action look and behave identically
  * everywhere. Reachability is already enforced by `src/middleware.ts`, so this
- * only ever renders for an authenticated director — the `AuthControl` therefore
- * shows "Admin panel" + "Logout".
+ * only ever renders for an authenticated director. It passes `surface="admin"`
+ * so the navigation control reads "Return to main view" (→ `/`) instead of the
+ * public "Admin panel" — which would be a no-op link to the current area — and
+ * therefore shows "Return to main view" + "Logout".
  *
  * The `.admin-shell` class layers the admin design tokens (`admin.css`) over the
  * public shell, adds the "Admin" badge signal, and renders the section nav once
@@ -29,7 +31,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             FOD Tags Admin
           </Link>
           <span className="admin-badge">Admin</span>
-          <AuthControl />
+          <AuthControl surface="admin" />
         </div>
       </header>
       <AdminNav />

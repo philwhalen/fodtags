@@ -151,13 +151,32 @@ describe("public UI shell", () => {
     }
   });
 
-  it("admin auth control: director shows Admin panel + Logout", () => {
+  it("admin auth control: director on the public surface shows Admin panel + Logout", () => {
     const model = authControlModel({ user: { isDirector: true } });
     expect(model.mode).toBe("director");
     if (model.mode === "director") {
+      expect(model.panelLabel).toBe("Admin panel");
       expect(model.panelHref).toBe("/admin");
       expect(model.logoutLabel).toBe("Logout");
     }
+  });
+
+  it("admin auth control: director inside the admin area shows Return to main view (→ /)", () => {
+    const model = authControlModel({ user: { isDirector: true } }, "admin");
+    expect(model.mode).toBe("director");
+    if (model.mode === "director") {
+      expect(model.panelLabel).toBe("Return to main view");
+      expect(model.panelHref).toBe("/");
+      expect(model.logoutLabel).toBe("Logout");
+    }
+  });
+
+  it("admin shell mounts the auth control with surface=\"admin\"", () => {
+    const adminLayout = fs.readFileSync(
+      path.join(REPO_ROOT, "src/app/admin/layout.tsx"),
+      "utf8",
+    );
+    expect(adminLayout).toContain('<AuthControl surface="admin" />');
   });
 
   it("AuthControl component exists and is mounted in the season header", () => {
