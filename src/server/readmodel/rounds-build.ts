@@ -6,8 +6,10 @@ import {
   type PublicRoundsPayload,
   type RoundRow,
   type RoundsHolderEntry,
+  type SeasonResults,
   type SubLeagueSlug,
   type SubLeagueType,
+  type TagAssignmentRow,
 } from "@/lib";
 import { listEvents } from "@server/db/repositories/events";
 import { listResultsBySeason } from "@server/db/repositories/eventResults";
@@ -34,6 +36,43 @@ function resolveSubLeague(sourceType: string, eventType: string): SubLeagueType 
   return null;
 }
 
+/**
+ * Rebuilds a per-holder "tag as of date" resolver from the *published*
+ * `tagAssignments` (Spec 02 §2.10), mirroring `computeTagTimeline`'s
+ * internal `tagAsOf` closure (`src/server/engine/tags.ts`) without
+ * depending on it directly — the read model only gets the flattened
+ * `tagAssignments` array + `currentTagByHolder` off `SeasonResults`
+ * (sub-plan 04), not the engine's private closures. `tagAssignments` is
+ * already in season (night) order, since the engine walks nights
+ * chronologically and appends as it goes.
+ */
+function buildTagAsOfResolver(
+  tagAssignments: TagAssignmentRow[],
+  eventDateById: Map<number, string>,
+  initialTagByHolder: Map<number, number | null>,
+): (holderId: number, date: string) => number | null {
+  const byHolder = new Map<number, { date: string; tagOut: number }[]>();
+  for (const assignment of tagAssignments) {
+    const eventDate = eventDateById.get(assignment.eventId);
+    if (eventDate === undefined) continue;
+    const list = byHolder.get(assignment.holderId) ?? [];
+    list.push({ date: eventDate.slice(0, 10), tagOut: assignment.tagOut });
+    byHolder.set(assignment.holderId, list);
+  }
+
+  return (holderId: number, date: string): number | null => {
+    const target = date.slice(0, 10);
+    let result = initialTagByHolder.get(holderId) ?? null;
+    const list = byHolder.get(holderId);
+    if (!list) return result;
+    for (const entry of list) {
+      if (entry.date <= target) result = entry.tagOut;
+      else break;
+    }
+    return result;
+  };
+}
+
 function latestOfficialRatingByHolder(
   ratings: ReturnType<typeof listRatingsBySeason>,
 ): Map<number, number> {
@@ -52,6 +91,7 @@ function latestOfficialRatingByHolder(
 
 export function assembleRoundsPayload(
   seasonYear: number,
+  seasonResults: SeasonResults,
   slugById: Map<number, string>,
 ): PublicRoundsPayload {
   const holders = listHolders(seasonYear).filter((h) => h.active);
@@ -65,6 +105,23 @@ export function assembleRoundsPayload(
   const canceledEventIds = new Set(events.filter((e) => e.canceled).map((e) => e.id));
   const presentRatingByHolder = latestOfficialRatingByHolder(ratings);
 
+  // Tag data (Spec 05 §5.3): a League Night round's tag-in/tag-out is
+  // looked up directly off the published `tagAssignments` (one row per
+  // holder/League-Night the engine's timeline produced); a Tournament/FOD
+  // Open round (no reassignment) carries the holder's tag as of that
+  // event's date, resolved from the same `tagAssignments`.
+  const assignmentByHolderEvent = new Map<string, TagAssignmentRow>();
+  for (const assignment of seasonResults.tagAssignments) {
+    assignmentByHolderEvent.set(`${assignment.holderId}:${assignment.eventId}`, assignment);
+  }
+  const initialTagByHolder = new Map(holders.map((h) => [h.id, h.tagNumber]));
+  const eventDateById = new Map(events.map((e) => [e.id, e.eventDate]));
+  const tagAsOf = buildTagAsOfResolver(
+    seasonResults.tagAssignments,
+    eventDateById,
+    initialTagByHolder,
+  );
+
   const roundsByHolder = new Map<number, RoundRow[]>();
   for (const result of results) {
     if (result.holderId === null) {
@@ -76,16 +133,32 @@ export function assembleRoundsPayload(
     }
 
     const sourceType = sourceTypeById.get(event.eventSourceId);
+    const subLeague =
+      sourceType !== undefined ? resolveSubLeague(sourceType, event.type) : null;
+
+    let tagIn: number | null;
+    let tagOut: number | null;
+    if (subLeague !== null) {
+      const assignment = assignmentByHolderEvent.get(`${result.holderId}:${event.id}`);
+      tagIn = assignment?.tagIn ?? null;
+      tagOut = assignment?.tagOut ?? null;
+    } else {
+      const asOf = tagAsOf(result.holderId, event.eventDate);
+      tagIn = asOf;
+      tagOut = asOf;
+    }
+
     const round: RoundRow = {
       eventId: event.id,
       date: event.eventDate,
       type: event.type,
-      subLeague:
-        sourceType !== undefined ? resolveSubLeague(sourceType, event.type) : null,
+      subLeague,
       eventLabel: event.label,
       roundOrdinal: event.roundOrdinal,
       scoreToPar: result.rawScoreToPar,
       roundRating: result.roundRating ?? null,
+      tagIn,
+      tagOut,
     };
 
     const bucket = roundsByHolder.get(result.holderId) ?? [];
@@ -121,11 +194,12 @@ export function assembleRoundsPayload(
  */
 export function buildRoundsView(
   seasonYear: number,
+  seasonResults: SeasonResults,
   slugById: Map<number, string>,
 ): ViewRow {
   return {
     seasonYear,
     viewKey: "rounds",
-    payload: assembleRoundsPayload(seasonYear, slugById),
+    payload: assembleRoundsPayload(seasonYear, seasonResults, slugById),
   };
 }

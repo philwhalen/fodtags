@@ -27,7 +27,7 @@ The app stores a normalized, versioned copy so views never depend on a live PDGA
 ## 3.3 Data the app does NOT get from PDGA (admin-supplied)
 
 See [Spec 10 — Admin Console](./10-Admin-Console.md). Summary:
-- Tag roster, **tag numbers**, pool assignment, entry dates, PDGA# ↔ holder mapping.
+- Tag roster, **initial tag numbers**, pool assignment, entry dates, PDGA# ↔ holder mapping. Nightly tag **reassignment** is *computed* from scores ([Spec 02 §2.10](./02-Domain-Model-and-Scoring.md#210-tag-numbers--nightly-reassignment)); only the **initial tags** and any per-night **overrides** ([Spec 10 §10.9](./10-Admin-Console.md#109-tag-assignments--history)) are admin-supplied — the current tag is derived, never entered.
 - Which PDGA event IDs belong to the Season and their **type** (Early/Mid/Late sub-league, Tournament, FOD Open).
 - Financial inputs & pot balances ([Spec 09](./09-Financials.md)).
 - Manual adjustments: cancellations, tag-not-present flags, pool switches, overrides ([Spec 02](./02-Domain-Model-and-Scoring.md)).
@@ -106,6 +106,7 @@ Fetch (per source) → Normalize → Match players → Persist snapshot
 - **Idempotent:** re-running a refresh yields the same stored state (no dupes).
 - **Atomic publish:** the public site reads the last fully computed snapshot; a partially failed refresh does not corrupt live views.
 - **Auditable:** each published number can be traced to a source event, round, and refresh run.
+- **Tag timeline:** recompute (re)derives the nightly tag reassignment ([Spec 02 §2.10](./02-Domain-Model-and-Scoring.md#210-tag-numbers--nightly-reassignment)) from initial tags + scores + overrides, in night order, before ranking — since a night's tie-breaks read that night's tag-in. The resolved tag-in/tag-out per holder-night, and each holder's derived current tag, are published like any other computed output.
 
 ## 3.8 Resilience & failure handling
 

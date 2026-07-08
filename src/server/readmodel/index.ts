@@ -5,7 +5,7 @@ import { buildViews } from "@server/readmodel/build";
 import { publish } from "@server/readmodel/publish";
 
 export { buildViews } from "@server/readmodel/build";
-export type { StandingsViewPayload, ViewRow } from "@server/readmodel/build";
+export type { BuildViewsResult, StandingsViewPayload, ViewRow } from "@server/readmodel/build";
 export { publish } from "@server/readmodel/publish";
 
 /**
@@ -14,8 +14,8 @@ export { publish } from "@server/readmodel/publish";
  * ingestion pipeline call `recompute` instead.
  */
 export function buildAndPublish(seasonYear: number): number {
-  const views = buildViews(seasonYear);
-  return publish(seasonYear, views);
+  const { views, currentTags } = buildViews(seasonYear);
+  return publish(seasonYear, views, currentTags);
 }
 
 export {

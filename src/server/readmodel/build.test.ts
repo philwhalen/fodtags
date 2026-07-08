@@ -13,31 +13,56 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type { StandingsViewPayload, SubLeagueMetaPayload, ViewRow } from "@server/readmodel/build";
-import type { PublicRoundsPayload } from "@/lib";
+import type {
+  BuildViewsResult,
+  StandingsViewPayload,
+  SubLeagueMetaPayload,
+  ViewRow,
+} from "@server/readmodel/build";
+import type { PublicRoundsPayload, SeasonResults, SeasonSnapshot } from "@/lib";
 import { buildCanonicalSlugs } from "@/lib";
 
 const SEASON_YEAR = 2026;
 
 let tempDir: string;
-let buildViews: (seasonYear: number) => ViewRow[];
-let publish: (seasonYear: number, views: ViewRow[]) => number;
+let buildViews: (seasonYear: number) => BuildViewsResult;
+let publish: (
+  seasonYear: number,
+  views: ViewRow[],
+  currentTags: Record<number, number | null>,
+) => number;
 let buildAndPublish: (seasonYear: number) => number;
 let getCurrentVersion: (seasonYear: number) => number | undefined;
 let getPublished: (
   seasonYear: number,
   viewKey: string,
 ) => { payload: unknown } | undefined;
+let computeSeason: (snapshot: SeasonSnapshot) => SeasonResults;
+let loadSeasonSnapshot: (seasonYear: number) => SeasonSnapshot;
+let listHolders: (
+  seasonYear: number,
+) => { id: number; name: string; tagNumber: number | null; currentTagNumber: number | null }[];
 
 beforeAll(async () => {
   tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "fodtags-vitest-readmodel-"));
   process.env.DATA_DIR = tempDir;
 
-  const [{ applyMigrations }, { seed }, readmodel, readModelRepo] = await Promise.all([
+  const [
+    { applyMigrations },
+    { seed },
+    readmodel,
+    readModelRepo,
+    engine,
+    seasonSnapshotRepo,
+    tagHoldersRepo,
+  ] = await Promise.all([
     import("@server/db/migrate"),
     import("@server/db/seed"),
     import("@server/readmodel"),
     import("@server/db/repositories/readModel"),
+    import("@server/engine"),
+    import("@server/db/repositories/seasonSnapshot"),
+    import("@server/db/repositories/tagHolders"),
   ]);
 
   buildViews = readmodel.buildViews;
@@ -45,10 +70,17 @@ beforeAll(async () => {
   buildAndPublish = readmodel.buildAndPublish;
   getCurrentVersion = readModelRepo.getCurrentVersion;
   getPublished = readModelRepo.getPublished;
+  computeSeason = engine.computeSeason;
+  loadSeasonSnapshot = seasonSnapshotRepo.loadSeasonSnapshot;
+  listHolders = tagHoldersRepo.listHolders;
 
   applyMigrations();
   seed();
 });
+
+function currentSeasonResults(): SeasonResults {
+  return computeSeason(loadSeasonSnapshot(SEASON_YEAR));
+}
 
 afterAll(async () => {
   await fs.promises.rm(tempDir, { recursive: true, force: true });
@@ -108,17 +140,21 @@ describe("read model: build -> publish -> read", () => {
     expect(versionBefore).toBeDefined();
     const poolABefore = getPublished(SEASON_YEAR, "championship/pool-a");
     expect(poolABefore).toBeDefined();
+    const currentTagsBefore = listHolders(SEASON_YEAR).map((h) => h.currentTagNumber);
 
     // A duplicated view row collides with the read_model unique index
     // `(seasonYear, version, viewKey)` on its second insert — throwing
     // partway through the single publish transaction.
-    const views = buildViews(SEASON_YEAR);
-    expect(() => publish(SEASON_YEAR, [...views, views[0]!])).toThrow();
+    const { views, currentTags } = buildViews(SEASON_YEAR);
+    expect(() => publish(SEASON_YEAR, [...views, views[0]!], currentTags)).toThrow();
 
     // The pointer never advanced and the live view is byte-for-byte the
-    // pre-failure payload — readers never saw the partial write.
+    // pre-failure payload — readers never saw the partial write. The
+    // current-tag write-back (sub-plan 04) is inside the SAME transaction,
+    // so it never left a stale/partial current tag either.
     expect(getCurrentVersion(SEASON_YEAR)).toBe(versionBefore);
     expect(getPublished(SEASON_YEAR, "championship/pool-a")).toEqual(poolABefore);
+    expect(listHolders(SEASON_YEAR).map((h) => h.currentTagNumber)).toEqual(currentTagsBefore);
   });
 
   it("publishes a sub-leagues meta view matching the seed's windows", () => {
@@ -145,7 +181,11 @@ describe("read model: build -> publish -> read", () => {
 });
 
 describe("read model: rounds view", () => {
-  let buildRoundsView: (seasonYear: number, slugById: Map<number, string>) => ViewRow;
+  let buildRoundsView: (
+    seasonYear: number,
+    seasonResults: SeasonResults,
+    slugById: Map<number, string>,
+  ) => ViewRow;
   let listHolders: (
     seasonYear: number,
   ) => { id: number; name: string; tagNumber: number | null; active: boolean }[];
@@ -330,7 +370,8 @@ describe("read model: rounds view", () => {
           tagNumber: holder.tagNumber,
         })),
     );
-    return buildRoundsView(SEASON_YEAR, slugById).payload as PublicRoundsPayload;
+    return buildRoundsView(SEASON_YEAR, currentSeasonResults(), slugById)
+      .payload as PublicRoundsPayload;
   }
 
   function holderByName(name: string) {
@@ -340,7 +381,7 @@ describe("read model: rounds view", () => {
   }
 
   it("includes a rounds view in buildViews output", () => {
-    const views = buildViews(SEASON_YEAR);
+    const { views } = buildViews(SEASON_YEAR);
     expect(views.some((v) => v.viewKey === "rounds")).toBe(true);
   });
 
@@ -514,7 +555,7 @@ describe("read model: OLP view", () => {
   });
 
   function olpView(type: "early" | "mid" | "late") {
-    const view = buildViews(SEASON_YEAR).find((v) => v.viewKey === `olp/${type}`);
+    const view = buildViews(SEASON_YEAR).views.find((v) => v.viewKey === `olp/${type}`);
     expect(view).toBeDefined();
     return view!.payload as import("@/lib").PublicOlpPayload;
   }

@@ -16,6 +16,7 @@ let getCurrentVersion: (seasonYear: number) => number | undefined;
 let listAudit: (seasonYear: number, limit?: number) => Array<{ action: string; entityType: string }>;
 let loadSeasonSnapshot: (seasonYear: number) => import("@/lib").SeasonSnapshot;
 let computeSeason: (input: import("@/lib").SeasonSnapshot) => import("@/lib").SeasonResults;
+let computeTagTimeline: typeof import("@server/engine").computeTagTimeline;
 let listEvents: (seasonYear: number) => Array<{ id: number; label: string; canceled: boolean }>;
 let listSources: (seasonYear: number) => Array<{ id: number; type: string; complete: boolean }>;
 let listResultsByEvent: (eventId: number) => Array<{ id: number; holderId: number | null; tagPresent: boolean }>;
@@ -87,6 +88,7 @@ beforeAll(async () => {
   listAudit = auditRepo.listAudit;
   loadSeasonSnapshot = snapshotRepo.loadSeasonSnapshot;
   computeSeason = engineMod.computeSeason;
+  computeTagTimeline = engineMod.computeTagTimeline;
   listEvents = eventsRepo.listEvents;
   listSources = sourcesRepo.listSources;
   listResultsByEvent = resultsRepo.listResultsByEvent;
@@ -563,5 +565,127 @@ describe("financial admin mutations", () => {
         DIRECTOR,
       ),
     ).rejects.toThrow(/Skins payouts require a pool/);
+  });
+});
+
+describe("tag night overrides (Spec 02 §2.10, Spec 10 §10.9)", () => {
+  let setTagNightOverridesFn: (
+    input: { eventId: number; tagOuts: Record<number, number> },
+    actor: string | null,
+  ) => Promise<{ publishedVersion: number }>;
+  let listOverridesBySeasonFn: (
+    seasonYear: number,
+  ) => Array<{ eventId: number; holderId: number; tagOut: number }>;
+
+  beforeAll(async () => {
+    const [adminMutations, tagOverridesRepo] = await Promise.all([
+      import("@server/admin/mutations"),
+      import("@server/db/repositories/tagOverrides"),
+    ]);
+    setTagNightOverridesFn = adminMutations.setTagNightOverrides;
+    listOverridesBySeasonFn = tagOverridesRepo.listOverridesBySeason;
+  });
+
+  /** The night's current combined-field pile (tag-in/tag-out per
+   * participant), read the same way the admin mutation validates against —
+   * via the pure engine helper, not a re-implementation of it. */
+  function currentPile(eventId: number) {
+    const snapshot = loadSeasonSnapshot(SEASON_YEAR);
+    const timeline = computeTagTimeline({
+      holders: snapshot.holders,
+      events: snapshot.events,
+      tagOverrides: snapshot.tagOverrides,
+    });
+    return timeline.assignments.filter((a) => a.eventId === eventId && a.tagIn !== null);
+  }
+
+  it("writes tag_overrides + audit row + republishes, and clears back to computed on resubmit", async () => {
+    const night = listEvents(SEASON_YEAR).find((e) => e.label === "Early League Night 1");
+    expect(night).toBeDefined();
+
+    const pile = currentPile(night!.id);
+    expect(pile.length).toBeGreaterThanOrEqual(2);
+    const [first, second] = pile;
+
+    // Swap the top two holders' tag-outs — still a permutation of the
+    // night's tag-ins, but differs from computed for both of them.
+    const swapped: Record<number, number> = {};
+    for (const a of pile) swapped[a.holderId] = a.tagOut;
+    swapped[first!.holderId] = second!.tagOut;
+    swapped[second!.holderId] = first!.tagOut;
+
+    const versionBefore = getCurrentVersion(SEASON_YEAR)!;
+    await setTagNightOverridesFn({ eventId: night!.id, tagOuts: swapped }, DIRECTOR);
+
+    expect(getCurrentVersion(SEASON_YEAR)).toBeGreaterThan(versionBefore);
+    const overridesAfterSwap = listOverridesBySeasonFn(SEASON_YEAR).filter((o) => o.eventId === night!.id);
+    expect(overridesAfterSwap.find((o) => o.holderId === first!.holderId)?.tagOut).toBe(second!.tagOut);
+    expect(overridesAfterSwap.find((o) => o.holderId === second!.holderId)?.tagOut).toBe(first!.tagOut);
+    expect(
+      listAudit(SEASON_YEAR, 10).some((a) => a.action === "upsert" && a.entityType === "tag_override"),
+    ).toBe(true);
+
+    // Resubmitting the ORIGINAL (engine-computed) tag-outs clears the
+    // override back to computed — no row left for this event.
+    const computedOnly: Record<number, number> = {};
+    for (const a of pile) computedOnly[a.holderId] = a.tagOut;
+    const versionBeforeClear = getCurrentVersion(SEASON_YEAR)!;
+    await setTagNightOverridesFn({ eventId: night!.id, tagOuts: computedOnly }, DIRECTOR);
+
+    expect(getCurrentVersion(SEASON_YEAR)).toBeGreaterThan(versionBeforeClear);
+    expect(listOverridesBySeasonFn(SEASON_YEAR).some((o) => o.eventId === night!.id)).toBe(false);
+  });
+
+  it("rejects a non-permutation submission (no write, no recompute) and an unauthenticated write", async () => {
+    const night = listEvents(SEASON_YEAR).find((e) => e.label === "Mid League Night 1");
+    expect(night).toBeDefined();
+
+    const pile = currentPile(night!.id);
+    expect(pile.length).toBeGreaterThanOrEqual(2);
+
+    // Duplicate the first holder's tag-out onto the second — same set of
+    // holders, but not a valid permutation of the night's tag-ins.
+    const duplicated: Record<number, number> = {};
+    for (const a of pile) duplicated[a.holderId] = a.tagOut;
+    duplicated[pile[1]!.holderId] = duplicated[pile[0]!.holderId]!;
+
+    const versionBefore = getCurrentVersion(SEASON_YEAR)!;
+    const overridesBefore = listOverridesBySeasonFn(SEASON_YEAR).filter((o) => o.eventId === night!.id);
+
+    await expect(
+      setTagNightOverridesFn({ eventId: night!.id, tagOuts: duplicated }, DIRECTOR),
+    ).rejects.toThrow(/permutation/);
+
+    expect(getCurrentVersion(SEASON_YEAR)).toBe(versionBefore);
+    expect(listOverridesBySeasonFn(SEASON_YEAR).filter((o) => o.eventId === night!.id)).toEqual(
+      overridesBefore,
+    );
+
+    // A valid permutation from an unauthenticated actor is rejected too,
+    // and leaves no trace.
+    const valid: Record<number, number> = {};
+    for (const a of pile) valid[a.holderId] = a.tagOut;
+    await expect(setTagNightOverridesFn({ eventId: night!.id, tagOuts: valid }, null)).rejects.toMatchObject(
+      { code: "unauthorized" },
+    );
+    expect(getCurrentVersion(SEASON_YEAR)).toBe(versionBefore);
+    expect(listOverridesBySeasonFn(SEASON_YEAR).filter((o) => o.eventId === night!.id)).toEqual(
+      overridesBefore,
+    );
+  });
+
+  it("rejects a submission that omits or adds a holder relative to the night's pile", async () => {
+    const night = listEvents(SEASON_YEAR).find((e) => e.label === "Mid League Night 1");
+    expect(night).toBeDefined();
+
+    const pile = currentPile(night!.id);
+    expect(pile.length).toBeGreaterThanOrEqual(2);
+
+    const missingOne: Record<number, number> = {};
+    for (const a of pile.slice(1)) missingOne[a.holderId] = a.tagOut;
+
+    await expect(
+      setTagNightOverridesFn({ eventId: night!.id, tagOuts: missingOne }, DIRECTOR),
+    ).rejects.toThrow(/exactly this night's tagged participants/);
   });
 });

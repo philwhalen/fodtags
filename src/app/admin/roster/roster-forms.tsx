@@ -15,6 +15,10 @@ type Holder = {
   id: number;
   name: string;
   tagNumber: number | null;
+  /** Latest tag-out from the nightly reassignment timeline (Spec 02
+   * §2.10) — derived/read-only here; edited via the per-night tag page
+   * (`/admin/tags`), not the roster. */
+  currentTagNumber: number | null;
   pool: "A" | "B";
   entryDate: string;
   pdgaNumber: number | null;
@@ -57,7 +61,7 @@ export function CreateHolderForm() {
         Name <input name="name" required className="admin-input" />
       </label>
       <label className="admin-field">
-        Tag # <input name="tagNumber" type="number" min={1} required className="admin-input" />
+        Initial tag # <input name="tagNumber" type="number" min={1} required className="admin-input" />
       </label>
       <label className="admin-field">
         Pool{" "}
@@ -119,14 +123,14 @@ export function HolderRow({
   if (editing) {
     return (
       <tr>
-        <td colSpan={10}>
+        <td colSpan={11}>
           <form action={handleUpdate} className="admin-edit-form">
             <input type="hidden" name="id" value={holder.id} />
             <label className="admin-field">
               Name <input name="name" defaultValue={holder.name} required className="admin-input" />
             </label>
             <label className="admin-field">
-              Tag #{" "}
+              Initial tag #{" "}
               <input
                 name="tagNumber"
                 type="number"
@@ -135,6 +139,9 @@ export function HolderRow({
                 className="admin-input"
               />
             </label>
+            <span className="admin-field">
+              Current tag <strong>{formatTagNumber(holder.currentTagNumber)}</strong>
+            </span>
             <label className="admin-field">
               Pool{" "}
               <select name="pool" defaultValue={holder.pool} className="admin-select">
@@ -200,6 +207,7 @@ export function HolderRow({
       <td>{holder.id}</td>
       <td>{holder.name}</td>
       <td className="admin-num">{formatTagNumber(holder.tagNumber)}</td>
+      <td className="admin-num">{formatTagNumber(holder.currentTagNumber)}</td>
       <td>{holder.pool}</td>
       <td>{holder.entryDate}</td>
       <td className="admin-num">{holder.pdgaNumber ?? "—"}</td>

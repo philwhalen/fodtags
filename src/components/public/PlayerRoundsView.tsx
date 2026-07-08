@@ -2,7 +2,7 @@ import type { Route } from "next";
 import Link from "next/link";
 
 import { Sparkline } from "@/components/public/Sparkline";
-import { serializeRoundsFilter, subLeagueLabel } from "@/lib";
+import { roundTagCell, serializeRoundsFilter, subLeagueLabel } from "@/lib";
 import type { EventType, RoundsFilter, RoundsHolderEntry, RoundRow, SubLeagueType } from "@/lib";
 
 function rosterHref(seasonYear: number, filter: RoundsFilter): Route {
@@ -131,20 +131,27 @@ export function PlayerRoundsView({
                 <th scope="col">Event / Round</th>
                 <th scope="col">Score (to par)</th>
                 <th scope="col">Round rating</th>
+                <th scope="col">Tag</th>
               </tr>
             </thead>
             <tbody>
-              {rounds.map((round) => (
-                <tr key={round.eventId} className="player-rounds-row">
-                  <td data-label="Date">{round.date}</td>
-                  <td data-label="Sub-league">{roundSubLeagueCell(round)}</td>
-                  <td data-label="Event / Round">{eventRoundCell(round)}</td>
-                  <td data-label="Score (to par)">{formatScoreToPar(round.scoreToPar)}</td>
-                  <td data-label="Round rating">
-                    {round.roundRating !== null ? round.roundRating : "pending"}
-                  </td>
-                </tr>
-              ))}
+              {rounds.map((round) => {
+                const tagCell = roundTagCell(round);
+                return (
+                  <tr key={round.eventId} className="player-rounds-row">
+                    <td data-label="Date">{round.date}</td>
+                    <td data-label="Sub-league">{roundSubLeagueCell(round)}</td>
+                    <td data-label="Event / Round">{eventRoundCell(round)}</td>
+                    <td data-label="Score (to par)">{formatScoreToPar(round.scoreToPar)}</td>
+                    <td data-label="Round rating">
+                      {round.roundRating !== null ? round.roundRating : "pending"}
+                    </td>
+                    <td data-label="Tag" aria-label={tagCell.ariaLabel}>
+                      {tagCell.text}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

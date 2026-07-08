@@ -130,6 +130,17 @@ function isViewStale(seasonYear: number, subLeagueType?: SubLeagueType): boolean
 }
 
 /**
+ * `buildViews`' return shape (tag-reassignment sub-plan 04): the not-yet-
+ * published view rows, plus the engine's final per-holder current tag
+ * (Spec 02 §2.10) so `publish` can write it back to
+ * `tag_holders.currentTagNumber` atomically with the pointer flip.
+ */
+export interface BuildViewsResult {
+  views: ViewRow[];
+  currentTags: Record<number, number | null>;
+}
+
+/**
  * Load inputs (repositories only — no PDGA, no direct DB writes here), run
  * the PURE `computeSeason` engine once, and shape the result into view
  * rows keyed by `viewKey`: Championship + sub-league standings (Spec 04
@@ -137,7 +148,7 @@ function isViewStale(seasonYear: number, subLeagueType?: SubLeagueType): boolean
  * and financials (Spec 09) views. Skins views (Spec 08 §8.4) publish the
  * engine's existing `skins` qualification output for profile money sections.
  */
-export function buildViews(seasonYear: number): ViewRow[] {
+export function buildViews(seasonYear: number): BuildViewsResult {
   const snapshot = loadSeasonSnapshot(seasonYear);
   const results = computeSeason(snapshot);
 
@@ -261,9 +272,9 @@ export function buildViews(seasonYear: number): ViewRow[] {
     },
   });
 
-  views.push(buildRoundsView(seasonYear, slugById));
+  views.push(buildRoundsView(seasonYear, results, slugById));
 
-  const roundsPayload = assembleRoundsPayload(seasonYear, slugById);
+  const roundsPayload = assembleRoundsPayload(seasonYear, results, slugById);
   views.push(
     ...buildPlayersViews(
       seasonYear,
@@ -278,5 +289,5 @@ export function buildViews(seasonYear: number): ViewRow[] {
     ),
   );
 
-  return views;
+  return { views, currentTags: results.currentTagByHolder };
 }

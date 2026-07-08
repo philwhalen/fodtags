@@ -5,10 +5,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   MINI_SEASON_EXPECTED,
+  RESHUFFLE_EXPECTED,
   acceptanceBaseSnapshot,
   acceptanceHolder,
   acceptanceLeagueNight,
   miniSeasonSnapshot,
+  reshuffleSnapshot,
 } from "@server/engine/acceptance-fixtures";
 import { computeSeason } from "@server/engine/season";
 import type { SeasonSnapshotEvent } from "@/lib";
@@ -52,6 +54,61 @@ describe("Spec 02 acceptance criteria", () => {
       expect(olpFor(1).rounds).toBe(MINI_SEASON_EXPECTED.olpEarlyRounds.alice);
       expect(olpFor(2).rounds).toBe(MINI_SEASON_EXPECTED.olpEarlyRounds.bob);
       expect(olpFor(3).rounds).toBe(MINI_SEASON_EXPECTED.olpEarlyRounds.carol);
+    });
+  });
+
+  describe("nightly tag reassignment changes a later tie-break (§2.10/§2.6)", () => {
+    it("breaks the night-2 League-Night tie by the tag-in from night 1's reshuffle, not the static roster tag", () => {
+      const result = computeSeason(reshuffleSnapshot());
+
+      // Night 1: Bob (holder 2) wins outright on score; the combined-field
+      // reassignment then swaps tags so Bob tags-out at 1, Alice at 2.
+      const bobNight1 = result.scoreSheet[2]!.countedLineItems.find((i) => i.eventId === 1)!;
+      expect(bobNight1.rank).toBe(1);
+      expect(bobNight1.tieBrokenByTag).toBe(false);
+
+      // Night 2: tied score, resolved by tag-in (Bob now holds tag 1) —
+      // Bob wins, NOT Alice, even though Alice's *static* roster tag (1)
+      // is lower than Bob's (2).
+      const aliceNight2 = result.scoreSheet[1]!.countedLineItems.find((i) => i.eventId === 2)!;
+      const bobNight2 = result.scoreSheet[2]!.countedLineItems.find((i) => i.eventId === 2)!;
+      expect(bobNight2.rank).toBe(1);
+      expect(bobNight2.points).toBe(100);
+      expect(bobNight2.tieBrokenByTag).toBe(true);
+      expect(aliceNight2.rank).toBe(2);
+      expect(aliceNight2.points).toBe(60);
+      expect(aliceNight2.tieBrokenByTag).toBe(true);
+      expect(RESHUFFLE_EXPECTED.night2TieWinnerHolderId).toBe(2);
+    });
+
+    it("carries the post-reassignment (current) tag, not the static initial tag, on Championship and Podium rows", () => {
+      const result = computeSeason(reshuffleSnapshot());
+
+      const champA = result.championship.A;
+      const alice = champA.find((r) => r.holderId === RESHUFFLE_EXPECTED.championship.alice.holderId)!;
+      const bob = champA.find((r) => r.holderId === RESHUFFLE_EXPECTED.championship.bob.holderId)!;
+      expect(alice.tagNumber).toBe(RESHUFFLE_EXPECTED.championship.alice.tagNumber);
+      expect(alice.totalPoints).toBe(RESHUFFLE_EXPECTED.championship.alice.totalPoints);
+      expect(bob.tagNumber).toBe(RESHUFFLE_EXPECTED.championship.bob.tagNumber);
+      expect(bob.totalPoints).toBe(RESHUFFLE_EXPECTED.championship.bob.totalPoints);
+
+      // currentTagByHolder (Overall/write-back target) agrees.
+      expect(result.currentTagByHolder[1]).toBe(2);
+      expect(result.currentTagByHolder[2]).toBe(1);
+
+      // Podium (EARLY, complete) rows carry the same as-of tag.
+      const podiumA = result.podium.EARLY.A;
+      const podiumAlice = podiumA.find((r) => r.holderId === 1)!;
+      const podiumBob = podiumA.find((r) => r.holderId === 2)!;
+      expect(podiumAlice.tagNumber).toBe(2);
+      expect(podiumBob.tagNumber).toBe(1);
+
+      // The full timeline is published: 2 nights x 2 holders = 4 rows.
+      expect(result.tagAssignments).toHaveLength(4);
+      const night1Bob = result.tagAssignments.find((a) => a.eventId === 1 && a.holderId === 2)!;
+      expect(night1Bob.tagIn).toBe(2);
+      expect(night1Bob.tagOut).toBe(1);
+      expect(night1Bob.source).toBe("computed");
     });
   });
 

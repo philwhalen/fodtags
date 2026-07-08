@@ -20,7 +20,7 @@ This feature is a **read-only projection/aggregation** like Features 1–5: it r
 
 Shown at the top of every profile:
 
-- **Full name**, **tag number** (**"—"** when unassigned for a provisional holder), **pool** (A / B), **present (official) PDGA rating** (or **"—" (Unrated)**), and **PDGA number** linking out to the holder's PDGA profile (public data — privacy decision in [Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)).
+- **Full name**, **tag number** (the holder's **current tag** — their latest nightly tag-out, [Spec 02 §2.10](./02-Domain-Model-and-Scoring.md#210-tag-numbers--nightly-reassignment); **"—"** when the holder holds no tag yet), **pool** (A / B), **present (official) PDGA rating** (or **"—" (Unrated)**), and **PDGA number** linking out to the holder's PDGA profile (public data — privacy decision in [Master §5](./00-Master-Spec.md#5-cross-cutting-decisions-the-constitution)). The holder's night-by-night tag movement is visible in their Rounds table's **Tag** column ([Spec 05 §5.3](./05-Feature-Rounds-and-Ratings.md#53-per-player-rounds-table)).
 - **Eligibility flags** (text badges, not color-only — [Spec 11 §11.2](./11-UX-and-Nonfunctional.md#112-accessibility)):
   - **Pending confirmation** — shown for a **provisional (auto-added, unconfirmed)** holder ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching--auto-add-app-bootstraps-admin-confirms)); the record was bootstrapped from the PDGA scrape and awaits director confirmation. Omitted for confirmed holders.
   - **Pool B accrual** — `active` or `inactive` per the 920 rule ([Spec 02 §2.2](./02-Domain-Model-and-Scoring.md#22-pools--eligibility)); shown only for Pool B holders (Pool A omits this flag).
@@ -49,7 +49,7 @@ Each tag holder has a **canonical, human-readable slug** backed by the internal 
 
 1. Start from the holder's roster **name**, normalized: trim, lowercase, replace non-alphanumeric runs with `-`, strip leading/trailing hyphens (same rules as today's `slugifyName`).
 2. If **no other active holder** in the season shares that base slug, the canonical slug **is** the base slug (e.g. `jonathan-svendsen`).
-3. If two or more holders collide on the base slug, append `-{tagNumber}` to **each** colliding holder's canonical slug (e.g. `alex-smith-12`, `alex-smith-47`). A colliding holder with **no tag number** (auto-added/provisional — [Spec 02 §2.1](./02-Domain-Model-and-Scoring.md#21-core-entities)) falls back to `-{holderId}` so every canonical slug stays unique and stable.
+3. If two or more holders collide on the base slug, append `-{initialTagNumber}` to **each** colliding holder's canonical slug (e.g. `alex-smith-12`, `alex-smith-47`). The suffix uses the **initial** tag, not the current one — current tags are reassigned nightly ([Spec 02 §2.10](./02-Domain-Model-and-Scoring.md#210-tag-numbers--nightly-reassignment)) and would make slugs unstable across refreshes. A colliding holder with **no tag** (auto-added/provisional — [Spec 02 §2.1](./02-Domain-Model-and-Scoring.md#21-core-entities)) falls back to `-{holderId}` so every canonical slug stays unique and stable.
 
 Slugs are computed **once at read-model build time** from the season roster and stamped on every holder-scoped read-model row. All public links (leaderboards, OLP, score sheet, rounds, profile) use the **same canonical slug** — no ad-hoc re-slugification at render time.
 

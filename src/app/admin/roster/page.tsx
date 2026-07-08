@@ -24,7 +24,8 @@ export default async function AdminRosterPage() {
               <tr>
                 <th>ID</th>
                 <th>Name</th>
-                <th>Tag #</th>
+                <th>Initial tag #</th>
+                <th>Current tag</th>
                 <th>Pool</th>
                 <th>Entry date</th>
                 <th>PDGA #</th>

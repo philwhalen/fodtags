@@ -31,9 +31,11 @@ export type { RoundsLinks } from "./rounds-filter";
 export {
   filterHolderRounds,
   filterRosterByName,
+  roundTagCell,
   roundTrendSeries,
   summarizeRoster,
 } from "./rounds-projection";
+export type { RoundTagCell } from "./rounds-projection";
 export { sparklinePath, sparklineSummary } from "./sparkline";
 export type {
   PublicRoundsPayload,
@@ -66,6 +68,7 @@ export type {
   SeasonSnapshotPoolSwitch,
   SeasonSnapshotRating,
   SeasonSnapshotSubLeague,
+  SeasonSnapshotTagOverride,
   SeasonSnapshotTagSale,
   SubLeagueType,
 } from "./season-snapshot";
@@ -84,6 +87,7 @@ export type {
   SeasonResults,
   SeasonStandingRow,
   SkinsRow,
+  TagAssignmentRow,
 } from "./season-results";
 
 /** A single ranked row in a pool's leaderboard (Spec 04 §4.2 columns).

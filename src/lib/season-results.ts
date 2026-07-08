@@ -14,6 +14,27 @@ import type {
 /** A ranked row in a per-pool standing (Championship, sub-league, or
  * Podium) — Spec 02 §2.6 tie-break flag included so the UI can badge
  * ties resolved by tag number. */
+/**
+ * One holder's tag-in/tag-out for a single League Night (Spec 02 §2.10) —
+ * the `computeTagTimeline` pre-pass's per-row output (sub-plan 02;
+ * consumed by `computeSeason`'s tie-breaks in sub-plan 03 and published in
+ * the read model in sub-plan 04).
+ */
+export interface TagAssignmentRow {
+  eventId: number;
+  holderId: number;
+  /** The tag held going into this night; `null` only for a holder with no
+   * prior tag who a director override is assigning one to for the first
+   * time this night (Spec 02 §2.10 "who is in the pile"). */
+  tagIn: number | null;
+  /** The tag held after this night's reassignment. */
+  tagOut: number;
+  /** `"override"` when a director-recorded value replaced (or supplied)
+   * this row; `"computed"` when the engine's combined-field handout
+   * produced it unmodified. */
+  source: "computed" | "override";
+}
+
 export interface SeasonStandingRow {
   rank: number;
   holderId: number;
@@ -222,4 +243,12 @@ export interface SeasonResults {
   skins: PoolSkins;
   /** Fund balances, ledger, and reconciliation facts (Spec 09). */
   financials: SeasonFinancials;
+  /** The full published tag reassignment timeline (Spec 02 §2.10) — one
+   * row per (holder, League Night) tag-in/tag-out, computed by the
+   * `computeTagTimeline` pre-pass. */
+  tagAssignments: TagAssignmentRow[];
+  /** Every holder's tag as of the end of the season, keyed by holder ID —
+   * the write-back target for `tag_holders.currentTagNumber` (sub-plan 04)
+   * and the same value used for the Championship/Overall tie-break. */
+  currentTagByHolder: Record<number, number | null>;
 }

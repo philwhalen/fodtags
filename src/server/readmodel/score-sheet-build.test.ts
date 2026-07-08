@@ -31,7 +31,7 @@ const SEASON_YEAR = 2026;
 const EMPTY_SEASON_YEAR = 2099;
 
 let tempDir: string;
-let buildViews: (seasonYear: number) => ViewRow[];
+let buildViews: (seasonYear: number) => { views: ViewRow[] };
 let buildAndPublish: (seasonYear: number) => number;
 let getPublished: (
   seasonYear: number,
@@ -296,6 +296,7 @@ describe("score-sheet build (plans/score-sheets/02-readmodel-build.md)", () => {
         },
       ],
       poolSwitches: [],
+      tagOverrides: [],
       ratings: [],
       subLeagues: (["EARLY", "MID", "LATE"] as const).map((type) => ({
         type,
@@ -462,7 +463,7 @@ describe("score-sheet build (plans/score-sheets/02-readmodel-build.md)", () => {
   });
 
   it("includes score-sheet/pool-a and pool-b in buildViews output", () => {
-    const views = buildViews(SEASON_YEAR);
+    const { views } = buildViews(SEASON_YEAR);
     expect(views.some((v) => v.viewKey === "score-sheet/pool-a")).toBe(true);
     expect(views.some((v) => v.viewKey === "score-sheet/pool-b")).toBe(true);
   });

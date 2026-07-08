@@ -27,15 +27,17 @@ The admin console has no public link today; a director must know the `/admin` UR
 
 ## 10.2 Roster & tag management
 
-- CRUD tag holders: name, **tag number**, **pool**, **entry date**, **PDGA number**, **rating at entry**, active flag, PDGA-membership flag, **confirmed flag**.
+- CRUD tag holders: name, **initial tag number**, **pool**, **entry date**, **PDGA number**, **rating at entry**, active flag, PDGA-membership flag, **confirmed flag**.
 - Enforce eligibility rules on input ([Spec 02 §2.2](./02-Domain-Model-and-Scoring.md#22-pools--eligibility)): warn if assigning Pool B to a ≥900-rated player; support director placement of unrated players.
 - **Pool switches**: recorded with effective date; forfeits pre-switch points (engine honors this) and is flagged as director-approved.
 - **Provisional (auto-added) holders** ([Spec 03 §3.5](./03-Data-Ingestion-and-PDGA.md#35-player-matching--auto-add-app-bootstraps-admin-confirms)) appear in the roster as `confirmed = false` with **no tag number**; they are resolved through the player review & confirmation queue (§10.4), which is the primary place a director confirms/edits them.
-- Tag number is **optional** (a provisional holder has none until assigned) but must be **unique when present** — tag numbers drive tie-breaks ([Spec 02 §2.6](./02-Domain-Model-and-Scoring.md#26-tie-breakers)). An unassigned tag number sorts last in tie-breaks.
+- **Initial vs current tag.** Because tags are **reassigned every League Night** ([Spec 02 §2.10](./02-Domain-Model-and-Scoring.md#210-tag-numbers--nightly-reassignment)), the roster field a director **edits** is the **initial tag** (the number as bought in). The holder's **current tag** — their latest tag-out — is **derived** from the tag history and shown **read-only** beside it. Nightly changes are managed in [§10.9](#109-tag-assignments--history), not here.
+- Initial tag number is **optional** (a provisional holder has none until assigned) but must be **unique when present** — tags drive tie-breaks ([Spec 02 §2.6](./02-Domain-Model-and-Scoring.md#26-tie-breakers)). A holder holding no tag sorts last in tie-breaks.
 
 ## 10.3 PDGA event configuration
 
 - Register the Season's **event sources** ([Spec 03 §3.4](./03-Data-Ingestion-and-PDGA.md#34-event-registration-model)): `pdgaEventId`, `type` (Early/Mid/Late/Tournament/FOD Open), divisions, active flag, label.
+  - **Smart `type` default.** The registration form pre-selects the `type` most likely to be correct, so a director doesn't silently mis-file a sub-league event — e.g. registering the Early league as a `Tournament`, which attributes none of its rounds to the Early sub-league and leaves the Early leaderboard empty ([Spec 03 §3.4](./03-Data-Ingestion-and-PDGA.md#34-event-registration-model): attribution keys off the source `type`). The default is the **earliest unfilled sub-league slot** — the first of **Early → Mid → Late** for which **no source of that type yet exists this Season** (counting sources **active *or* inactive**: a slot, once registered, stays filled even if that source is later deactivated). Once **all three** sub-league slots are filled, the default becomes **Tournament**. **FOD Open is never auto-selected** — it is always an explicit manual choice. The default is only the form's initial selection and is **fully overridable**: the director may register any `type` regardless of the default.
 - For **sub-leagues** (Early/Mid/Late): set the **start and end dates** that bound the sub-league window (they drive current-sub-league selection and the OLP "last day" rating), plus a **"Mark complete"** action that **finalizes** the sub-league — folding in the computed Podium bonus ([Spec 02 §2.4.1](./02-Domain-Model-and-Scoring.md#241-league-podium--computed-bonus)) and flipping OLP payouts from projected to final ([Spec 06 §6.4](./06-Feature-OLP-Pot.md#64-freshness--correctness)).
 - Add tournaments / the FOD Open as they're scheduled.
 - Set the **tournament count** context that drives the best-2 vs best-3 cap (or derive from registered tournament events).
@@ -84,9 +86,21 @@ Per [Spec 09 §9.2](./09-Financials.md#92-whats-computed-vs-entered) — the dir
 - Recompute is **idempotent** and produces an atomically published snapshot ([Spec 03 §3.7](./03-Data-Ingestion-and-PDGA.md#37-ingestion-pipeline)).
 - **Default: edits auto-publish** — a refresh or admin change recomputes and atomically publishes the new snapshot (audited, and reversible via the audit trail). A **preview-before-publish** step is a post-launch nice-to-have, not required for launch.
 
+## 10.9 Tag assignments & history
+
+The workspace for the nightly tag reassignment ([Spec 02 §2.10](./02-Domain-Model-and-Scoring.md#210-tag-numbers--nightly-reassignment)). By default the engine **computes** each League Night's handout from that night's scores + tag-ins; this section is where a director **reviews** those computed assignments and **records what physically happened** when it differed — including **seeding the real historical tag→holder record** the league already has on paper (the reconciliation goal).
+
+- **Per-night view.** For a selected League Night, a table of the participating holders showing **tag-in → tag-out**, the holder's finish among the combined field, and whether each tag-out is **computed** or an **override**. Non-participants (absent / tag-not-present) are listed as unchanged.
+- **Override entry.** A director can set the night's tag-outs to the observed values. Overrides are validated as a **permutation** of that night's tag-ins (each returned tag assigned exactly once) and **rejected otherwise**, with a clear error. An override for a night **propagates forward**: it changes the tag-in of every affected holder's next night, which recompute re-resolves.
+- **Season timeline.** A per-holder history (every night's tag-in/tag-out) and the derived **current tag**, so a director can trace how any holder's number moved.
+- **Audited.** Every override is written to the audit log (who / what / when / before-after — §10.1) and triggers recompute (§10.8). Editing a holder's **initial tag** (§10.2) is the way to correct the *start* of their sequence; overrides correct individual nights.
+- **Cancelled nights** (§2.7 / §10.5) perform no reassignment by default; the per-night view reflects this, and a director may still override if a reshuffle actually occurred.
+
 ## Acceptance criteria
 
-- A director can register 3 sub-league events + tournaments, build the roster with tag numbers/pools/PDGA#s, resolve unmatched players, and see correct public standings after a refresh.
+- A director can register 3 sub-league events + tournaments, build the roster with initial tag numbers/pools/PDGA#s, resolve unmatched players, and see correct public standings after a refresh.
+- The roster edits a holder's **initial tag** and shows their **current tag** (latest tag-out) read-only; initial tags are unique when present.
+- For a League Night, the tag-assignment view shows each holder's **tag-in → tag-out** and marks computed vs overridden; entering an override that is **not** a valid permutation of that night's tag-ins is rejected, and a valid override wins over the computed handout, is audited, and re-flows to later nights on recompute.
 - A brand-new PDGA entrant (PDGA # present, no holder match) is **auto-added as a provisional holder** on refresh, scores from its first round with a "pending confirmation" marker, and appears in the review queue; **confirming** it (setting pool + optional tag number) clears the marker, while **merge** or **exclude** removes the provisional record and re-points/reverts its results. All four outcomes are sticky.
 - Cancelling a League Night zeroes its points everywhere including OLP counts.
 - A pool switch forfeits prior points and is reflected after recompute.

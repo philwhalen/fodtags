@@ -45,6 +45,7 @@ import {
   type NewEventSourceInput,
 } from "@server/db/repositories/eventSources";
 import { insertSwitch } from "@server/db/repositories/poolSwitches";
+import { loadSeasonSnapshot } from "@server/db/repositories/seasonSnapshot";
 import {
   findActiveProvisionalHolderByPdgaNumber,
   findHolderByTagNumber,
@@ -52,7 +53,13 @@ import {
   insertHolder,
   updateHolder,
 } from "@server/db/repositories/tagHolders";
+import {
+  deleteOverride,
+  listOverridesBySeason,
+  upsertOverride,
+} from "@server/db/repositories/tagOverrides";
 import { getMatch, upsertMatch } from "@server/db/repositories/playerMatches";
+import { computeTagTimeline } from "@server/engine/tags";
 import type {
   ExpenseCategory,
   FundId,
@@ -410,6 +417,126 @@ export async function setTagNotPresent(
     action: tagPresent ? "tag_present" : "tag_not_present",
     entityType: "event_result",
     entityId: String(resultId),
+    before,
+    after,
+  });
+  return { publishedVersion };
+}
+
+// --- Tag assignments & history (Spec 02 §2.10, Spec 10 §10.9) ---
+
+/**
+ * The night's base computed pile: tag-in + engine-computed tag-out per
+ * holder, with THIS night's own stored overrides stripped out so the
+ * result reflects what the engine would hand out by default. Calls the
+ * same pure `computeTagTimeline` the read model publishes from — this is
+ * the "small server helper" the admin input path needs to validate a
+ * submission without duplicating the engine's reassignment math (the
+ * chunk-02 trust boundary: `computeTagTimeline` applies stored overrides
+ * verbatim, so validation MUST happen here). Other nights' overrides are
+ * kept, since they legitimately affect this night's tag-ins via the
+ * chronological walk; this night's own overrides don't affect its own
+ * tag-ins (only its tag-outs), so stripping them only changes what
+ * "computed" means for THIS night.
+ */
+function computeNightPile(
+  seasonYear: number,
+  eventId: number,
+): Map<number, { tagIn: number; computedTagOut: number }> {
+  const snapshot = loadSeasonSnapshot(seasonYear);
+  const baseline = computeTagTimeline({
+    holders: snapshot.holders,
+    events: snapshot.events,
+    tagOverrides: snapshot.tagOverrides.filter((o) => o.eventId !== eventId),
+  });
+
+  const pile = new Map<number, { tagIn: number; computedTagOut: number }>();
+  for (const assignment of baseline.assignments) {
+    if (assignment.eventId === eventId && assignment.tagIn !== null) {
+      pile.set(assignment.holderId, { tagIn: assignment.tagIn, computedTagOut: assignment.tagOut });
+    }
+  }
+  return pile;
+}
+
+export interface SetTagNightOverridesInput {
+  eventId: number;
+  /** Submitted tag-out per participating holder — Spec 10 §10.9 "submit
+   * posts the full night mapping." Must cover exactly the night's pile
+   * participants (Spec 02 §2.10 "who is in the pile"). */
+  tagOuts: Record<number, number>;
+}
+
+/**
+ * A director records what a League Night's tag handout actually looked
+ * like, correcting the engine's computed reassignment (Spec 02 §2.10,
+ * Spec 10 §10.9). Rejects a submission that isn't a valid permutation of
+ * that night's tag-ins (no write, no recompute); upserts an override only
+ * for holders whose submitted tag-out differs from computed, and deletes
+ * any existing override that now matches computed (clears back to
+ * computed). A single audit row covers the whole night's mapping.
+ */
+export async function setTagNightOverrides(
+  input: SetTagNightOverridesInput,
+  actorEmail: string | null,
+): Promise<MutationResult> {
+  assertActor(actorEmail);
+  const event = getEvent(input.eventId);
+  if (!event) {
+    throw new AdminError("Event not found.", "not_found");
+  }
+  if (event.type !== "LeagueNight") {
+    throw new AdminError("Tag reassignment only applies to League Nights.");
+  }
+
+  const pile = computeNightPile(SEASON_YEAR, input.eventId);
+  const submittedHolderIds = Object.keys(input.tagOuts).map((k) => Number.parseInt(k, 10));
+
+  const coversExactlyThePile =
+    submittedHolderIds.length === pile.size && submittedHolderIds.every((id) => pile.has(id));
+  if (!coversExactlyThePile) {
+    throw new AdminError(
+      "Submission must include exactly this night's tagged participants — no more, no fewer.",
+    );
+  }
+
+  const expectedTagIns = [...pile.values()].map((p) => p.tagIn).sort((a, b) => a - b);
+  const submittedTagOuts = submittedHolderIds.map((id) => input.tagOuts[id]!).sort((a, b) => a - b);
+  const isPermutation =
+    expectedTagIns.length === submittedTagOuts.length &&
+    expectedTagIns.every((tagIn, i) => tagIn === submittedTagOuts[i]);
+  if (!isPermutation) {
+    throw new AdminError(
+      "Tag-outs must be a permutation of this night's tag-ins — each returned tag assigned exactly once.",
+    );
+  }
+
+  const before = listOverridesBySeason(SEASON_YEAR).filter((o) => o.eventId === input.eventId);
+
+  for (const holderId of submittedHolderIds) {
+    const submittedTagOut = input.tagOuts[holderId]!;
+    const computedTagOut = pile.get(holderId)!.computedTagOut;
+    if (submittedTagOut === computedTagOut) {
+      deleteOverride(input.eventId, holderId);
+    } else {
+      upsertOverride({
+        seasonYear: SEASON_YEAR,
+        eventId: input.eventId,
+        holderId,
+        tagOut: submittedTagOut,
+        decidedBy: actorEmail,
+      });
+    }
+  }
+
+  const after = listOverridesBySeason(SEASON_YEAR).filter((o) => o.eventId === input.eventId);
+
+  const publishedVersion = await commitAndPublish({
+    seasonYear: SEASON_YEAR,
+    actorEmail,
+    action: "upsert",
+    entityType: "tag_override",
+    entityId: String(input.eventId),
     before,
     after,
   });

@@ -1,4 +1,5 @@
 import { SEASON_YEAR } from "@server/admin/context";
+import { defaultEventSourceType } from "@server/admin/default-event-type";
 import { listSources } from "@server/db/repositories/eventSources";
 
 import { RegisterSourceForm, SourceRow } from "./event-forms";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminEventsPage() {
   const sources = listSources(SEASON_YEAR);
+  const defaultType = defaultEventSourceType(sources.map((s) => s.type));
 
   return (
     <>
@@ -41,7 +43,7 @@ export default async function AdminEventsPage() {
 
       <section className="admin-section">
         <h2 className="admin-section-heading">Register source</h2>
-        <RegisterSourceForm />
+        <RegisterSourceForm key={sources.length} defaultType={defaultType} />
       </section>
     </>
   );

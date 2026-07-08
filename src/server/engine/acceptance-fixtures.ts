@@ -42,6 +42,7 @@ export function acceptanceBaseSnapshot(
     seasonYear: ACCEPTANCE_SEASON_YEAR,
     holders: [],
     poolSwitches: [],
+    tagOverrides: [],
     ratings: [],
     subLeagues: [
       { type: "EARLY", startDate: "2026-05-01", endDate: "2026-05-08", complete: false },
@@ -129,6 +130,75 @@ export function miniSeasonSnapshot(): SeasonSnapshot {
     ],
   });
 }
+
+/**
+ * Reassignment fixture (Spec 02 §2.10): the nightly tag reassignment
+ * changes a LATER tie-break outcome.
+ *
+ * Night 1 (2026-05-01): Bob (initial tag 2) beats Alice (initial tag 1)
+ * outright, -10 to -5 — no tie. But the combined-field reassignment hands
+ * out tags by finish order (lowest score → lowest tag): Bob (rank 1)
+ * takes tag 1, Alice (rank 2) takes tag 2 — their tags SWAP.
+ *
+ * Night 2 (2026-05-08): Alice and Bob tie, -5 each. The tie-break uses the
+ * tag each held GOING INTO night 2 (Spec 02 §2.6 "tag-in") — Bob now
+ * holds tag 1 (lower), so Bob wins the tie, not Alice, even though Alice
+ * held the lower tag (1) at the season's start. A tie-break keyed off the
+ * static roster tag would have wrongly favored Alice.
+ *
+ * Hand calc: Bob 100 (night1 win) + 100 (night2 tie win) = 200 LN points;
+ * Alice 60 + 60 = 120 LN points. The sub-league is `complete`, so the
+ * computed Podium bonus folds in: Bob 1st (150), Alice 2nd (100) →
+ * Championship totals Bob 350, Alice 220. Podium/Championship `tagNumber`
+ * reflects each holder's CURRENT (post-swap) tag: Alice → 2, Bob → 1.
+ */
+export function reshuffleSnapshot(): SeasonSnapshot {
+  const alice = acceptanceHolder({ id: 1, tagNumber: 1, basePool: "A", pdgaMembership: true });
+  const bob = acceptanceHolder({ id: 2, tagNumber: 2, basePool: "A", pdgaMembership: true });
+
+  return acceptanceBaseSnapshot({
+    holders: [alice, bob],
+    subLeagues: [
+      { type: "EARLY", startDate: "2026-05-01", endDate: "2026-05-08", complete: true },
+      { type: "MID", startDate: "2026-06-15", endDate: "2026-07-15", complete: false },
+      { type: "LATE", startDate: "2026-08-01", endDate: "2026-09-01", complete: false },
+    ],
+    events: [
+      acceptanceLeagueNight({
+        id: 1,
+        eventDate: "2026-05-01",
+        roundOrdinal: 1,
+        results: [
+          { holderId: 1, rawScoreToPar: -5, roundRating: null, tagPresent: true },
+          { holderId: 2, rawScoreToPar: -10, roundRating: null, tagPresent: true },
+        ],
+      }),
+      acceptanceLeagueNight({
+        id: 2,
+        eventDate: "2026-05-08",
+        roundOrdinal: 2,
+        results: [
+          { holderId: 1, rawScoreToPar: -5, roundRating: null, tagPresent: true },
+          { holderId: 2, rawScoreToPar: -5, roundRating: null, tagPresent: true },
+        ],
+      }),
+    ],
+  });
+}
+
+/** Expected hand totals for {@link reshuffleSnapshot}. */
+export const RESHUFFLE_EXPECTED = {
+  // Night 2's tie is won by Bob (holder 2) via his post-night-1 tag-in
+  // (1), NOT by Alice (holder 1), who held the lower tag only at the
+  // season's static/initial start.
+  night2TieWinnerHolderId: 2,
+  championship: {
+    // LN subtotal + folded-in Podium bonus (sub-league marked complete):
+    // Alice 120 + 100 (2nd) = 220; Bob 200 + 150 (1st) = 350.
+    alice: { holderId: 1, tagNumber: 2, totalPoints: 220 },
+    bob: { holderId: 2, tagNumber: 1, totalPoints: 350 },
+  },
+} as const;
 
 /** Expected hand totals for {@link miniSeasonSnapshot}. */
 export const MINI_SEASON_EXPECTED = {

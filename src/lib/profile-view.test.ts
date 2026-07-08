@@ -50,6 +50,8 @@ function makeProfile(overrides: Partial<PublicProfilePayload> = {}): PublicProfi
         roundOrdinal: 1,
         scoreToPar: 2,
         roundRating: 905,
+        tagIn: 5,
+        tagOut: 5,
       },
       {
         eventId: 2,
@@ -60,6 +62,8 @@ function makeProfile(overrides: Partial<PublicProfilePayload> = {}): PublicProfi
         roundOrdinal: 2,
         scoreToPar: -1,
         roundRating: 910,
+        tagIn: 5,
+        tagOut: 5,
       },
     ],
     olpBySubLeague: {
@@ -216,6 +220,8 @@ describe("countLeagueNightRounds", () => {
           roundOrdinal: 1,
           scoreToPar: 0,
           roundRating: 900,
+          tagIn: 5,
+          tagOut: 5,
         },
         {
           eventId: 2,
@@ -226,6 +232,8 @@ describe("countLeagueNightRounds", () => {
           roundOrdinal: null,
           scoreToPar: 0,
           roundRating: 900,
+          tagIn: 5,
+          tagOut: 5,
         },
       ]),
     ).toBe(1);
